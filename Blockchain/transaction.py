@@ -1,9 +1,6 @@
 import time
-from hashlib import sha256
+from Crpto_tools import *
 from random import random,randrange
-
-def HASH256(x):
-    return sha256(sha256(x.encode()).hexdigest().encode()).hexdigest()
 
 def make_transaction(input_pubkey,output_pubKey,Vid=None,modelName="",tradeCnt=1,price=0):
     a = {}
