@@ -3,6 +3,21 @@ from Crpto_tools import *
 from random import random,randrange
 
 def make_transaction(input_pubkey,output_pubKey,Vid=None,modelName="",tradeCnt=1,price=0):
+    """
+    transaction 구조
+    {
+        'Vid': 'hexdigest',
+        'trandeCnt': int,
+        'modelName': 'hexdigest, str',
+        'manufacturedTime': 'date, str (____.__.__)',
+        'price': int,
+        'tradingTime': 'date, str (____.__.__)',
+        'input': 'hexdigest,str',
+        'output': 'hexdigest, str',
+        'txid': 'hexdigest, str',
+        'sig': 'hexdigest, str'
+    }
+    """
     a = {}
     if(Vid==None):
         a['Vid'] = sha256(str(random()).encode()).hexdigest()
@@ -23,5 +38,6 @@ def make_transaction(input_pubkey,output_pubKey,Vid=None,modelName="",tradeCnt=1
     return a
 
 ### 예시 transaction
-print(make_transaction('seller pubkey','buyer pubkey',modelName='Genesis',price=30000000))
+def print_example():
+    print(make_transaction('seller pubkey','buyer pubkey',modelName='Genesis',price=30000000))
 ### 예시 transaction 출력 end ###

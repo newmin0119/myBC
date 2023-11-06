@@ -1,13 +1,31 @@
 from transaction import make_transaction
 from Crpto_tools import *
 class Block:
+    """
+    {
+        'Header': 
+        {
+            'blockHeight': int,
+            'prevHash': 'hexdigest, str',
+            'nonce': 'hexdigest, str',
+            'Merkle-root': 'hexdigest, str'
+        }
+        'transactions':
+        [   
+            // 순서대로 트리의 index.
+            { ... },
+            { ... },
+            ...
+        ]
+    }
+    """
     ### Block 생성 및 Header 구성
     def __init__(self, args):
         self.blockHeight=args['blockHeight']
         self.prevHash   =args['prevHash']
         self.nonce      =args['nonce']
-        self.Merkle_tree=args['Merkle_tree']
-        self.Merkle_root=self.Merkle_tree[0]
+        self.Merkle_root=args['Merkle_tree'][0]
+        self.transactions=args['Merkle_tree']
     
     ### Block의 데이터를 출력하는 함수, 객체의 반환형을 str 형태로, dict 형태로 복원 가능
     def __str__(self) -> str:
@@ -18,7 +36,7 @@ class Block:
                 'nonce':self.nonce,
                 'Merkle-root':self.Merkle_root
             },
-            'transactions':self.Merkle_tree
+            'transactions':self.transactions
         })
     
 ### Merkle tree 구성 함수
@@ -46,16 +64,17 @@ def set_merkle(tx) -> list:
 
 
 ### 예시 Block ###
-tx = []
-for i in range(5):
-    tx.append(make_transaction('seller pubkey','buyer pubkey',modelName='Genesis',price=i))
+def print_example():
+    tx = []
+    for i in range(5):
+        tx.append(make_transaction('seller pubkey','buyer pubkey',modelName='Genesis',price=i))
 
-block_arg = {
-    'blockHeight':0,
-    'prevHash':'asdfasdfadsfasdfasdfasdfasdf',
-    'nonce':'fdsafdsafdsafdsa',
-    'Merkle_tree': tx
-}
-
-print(Block(block_arg))
+    block_arg = {
+        'blockHeight':0,
+        'prevHash':'asdfasdfadsfasdfasdfasdfasdf',
+        'nonce': 12345678,
+        'Merkle_tree': set_merkle(tx)[1:]
+    }
+    print(Block(block_arg))
+print_example()
 ### 예시 Block 출력 end ###
