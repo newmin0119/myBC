@@ -34,13 +34,20 @@ class FullNode:
             if txs[i-1]['txid']!= verify_sig(txs[i]['sig'],txs[i]['input']): return False
         
         return True
-    
+
     # 채굴 함수
-    def mining_process():
+    def mining_process(self):
         """
         Mining process
         """
+        header = {
+            'blockHeight': self.longest_chain[-1].blockHeight+1,
+            'prevHash': self.longest_chain[-1],
+            'nonce': '',
+            'Merkle-root': ''
+        }
         # set_merkle 함수 활용 merkle 생성
+        set_merkle(self.tx_pool) # -- pool 추후 집합으로 변경 필요
         # nonce 값 조정, nonce<=self.target_N
         # 
         while 1: pass

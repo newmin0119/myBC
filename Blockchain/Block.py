@@ -8,7 +8,7 @@ class Block:
             'blockHeight': int,
             'prevHash': 'hexdigest, str',
             'nonce': 'hexdigest, str',
-            'Merkle-root': 'hexdigest, str'
+            'Merkle_root': 'hexdigest, str'
         }
         'transactions':
         [   
@@ -34,7 +34,7 @@ class Block:
                 'blockHeight':self.blockHeight,
                 'prevHash':self.prevHash,
                 'nonce':self.nonce,
-                'Merkle-root':self.Merkle_root
+                'Merkle_root':self.Merkle_root
             },
             'transactions':self.transactions
         })
