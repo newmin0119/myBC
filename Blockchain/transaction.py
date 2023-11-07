@@ -25,7 +25,7 @@ def make_transaction(input_pubkey,output_pubKey,Vid=None,modelName="",tradeCnt=1
         a['Vid'] = Vid
     a['trandeCnt'] = tradeCnt
     a['modelName'] = modelName
-    a['manufacturedTime'] = manufactured
+    a['manufacturedTime'] = manufacturedTime
     a['price']=price
     a['tradingTime']=time.strftime('%Y.%m.%d', time.localtime(time.time()))
     
