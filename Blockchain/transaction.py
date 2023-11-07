@@ -2,7 +2,7 @@ import time
 from Crpto_tools import *
 from random import random,randrange
 
-def make_transaction(input_pubkey,output_pubKey,Vid=None,modelName="",tradeCnt=1,price=0):
+def make_transaction(input_pubkey,output_pubKey,Vid=None,modelName="",tradeCnt=1,price=0,manufacturedTime=''):
     """
     transaction 구조
     {
@@ -25,7 +25,7 @@ def make_transaction(input_pubkey,output_pubKey,Vid=None,modelName="",tradeCnt=1
         a['Vid'] = Vid
     a['trandeCnt'] = tradeCnt
     a['modelName'] = modelName
-    a['manufacturedTime'] = str(randrange(1990,2024))+'.'+str(randrange(1,13))+'.'+str(randrange(1,28))
+    a['manufacturedTime'] = manufactured
     a['price']=price
     a['tradingTime']=time.strftime('%Y.%m.%d', time.localtime(time.time()))
     
@@ -39,5 +39,6 @@ def make_transaction(input_pubkey,output_pubKey,Vid=None,modelName="",tradeCnt=1
 
 ### 예시 transaction
 def print_example():
-    print(make_transaction('seller pubkey','buyer pubkey',modelName='Genesis',price=30000000))
+    print(make_transaction('seller pubkey','buyer pubkey',modelName='Genesis',price=30000000,manufactured='2023.10.31'))
+print_example()
 ### 예시 transaction 출력 end ###

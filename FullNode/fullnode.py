@@ -31,7 +31,7 @@ class FullNode:
             if txs[i]['manufacturedTime']!=txs[i]['manufacturedTime']: return False
 
             ## 3) Verify signature
-            if txs[i-1]['txid']!= verify_sig(txs[i]['sig'],txs[i]['input']): return False
+            if verify_sig(txs[i]['sig'],txs[i]['input'],bytes(txs[i-1]['txid'])): return False
         
         return True
 
