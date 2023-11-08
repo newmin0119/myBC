@@ -33,12 +33,10 @@ def make_transaction(input_pubkey,output_pubKey,Vid=None,modelName="",tradeCnt=1
     a['output'] = output_pubKey
     a['txid'] = sha256(str(a).encode()).hexdigest()
 
-    a['sig'] = '' ### crypto.load_certificate() ### load_certificate() 서명 부분 더 정확히 수정 필요
-
     return a
 
 ### 예시 transaction
 def print_example():
     print(make_transaction('seller pubkey','buyer pubkey',modelName='Genesis',price=30000000,manufactured='2023.10.31'))
-print_example()
+
 ### 예시 transaction 출력 end ###
