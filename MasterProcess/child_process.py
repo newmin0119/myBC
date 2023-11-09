@@ -13,7 +13,13 @@ class FullNode_Process(Process,FullNode):
         self.port = port
     
     def run(self):
-        print(self.longest_chain[0])
+        print(self.ip, self.port)
+        print('\n\nGenesisBlock\n\n')
+        print(self.longest_chain[0].Header)
+        print('\n\n채굴 시작\n\n')
+        self.mining_process()
+        print('채굴종료\n\n직전 채굴된 Block\n\n')
+        print(self.longest_chain[-1].Header)
         pass
 
 

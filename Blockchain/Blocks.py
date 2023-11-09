@@ -1,7 +1,7 @@
 import sys, os
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-from .transaction import make_transaction
-from .Crypto_tools import *
+from Blockchain.transactions import make_transaction
+from Blockchain.Crypto_tools import *
 class Block:
     """
     {
@@ -23,21 +23,17 @@ class Block:
     """
     ### Block 생성 및 Header 구성
     def __init__(self, args):
-        self.blockHeight=args['blockHeight']
-        self.prevHash   =args['prevHash']
-        self.nonce      =args['nonce']
-        self.Merkle_root=args['Merkle_tree'][0]
+        self.Header = {}
+        self.Header['blockHeight']=args['blockHeight']
+        self.Header['prevHash']   =args['prevHash']
+        self.Header['nonce']      =args['nonce']
+        self.Header['Merkle_root']=args['Merkle_tree'][0]
         self.transactions=args['Merkle_tree']
     
     ### Block의 데이터를 출력하는 함수, 객체의 반환형을 str 형태로, dict 형태로 복원 가능
     def __str__(self) -> str:
         return str({
-            'Header':{
-                'blockHeight':self.blockHeight,
-                'prevHash':self.prevHash,
-                'nonce':self.nonce,
-                'Merkle_root':self.Merkle_root
-            },
+            'Header':self.Header,
             'transactions':self.transactions
         })
     
@@ -62,20 +58,20 @@ def set_merkle(tx) -> list:
         for i in range(leaf_n):
             ### 리프 노드가 아닌 노드는 자식노드의 값을 concatnate 한 값을 sha256 hash를 두 번 거친 값
             merkle_tree[i+leaf_n]=HASH256(merkle_tree[(i+leaf_n)<<1]+merkle_tree[((i+leaf_n)<<1)+1])
-    return merkle_tree
+    return merkle_tree[1:]
 
 
 ### 예시 Block ###
 def print_example():
     tx = []
+
     for i in range(5):
         tx.append(make_transaction('seller pubkey','buyer pubkey',modelName='Genesis',price=i))
-
     block_arg = {
         'blockHeight':0,
         'prevHash':'asdfasdfadsfasdfasdfasdfasdf',
         'nonce': 12345678,
-        'Merkle_tree': set_merkle(tx)[1:]
+        'Merkle_tree': set_merkle(tx)
     }
     B = [Block(block_arg),Block(block_arg)]
     print(B[0])

@@ -5,8 +5,11 @@ import socket
 from multiprocessing import Manager
 
 from child_process import FullNode_Process, UserNode_Process
-from Blockchain.Block import Block
+from Blockchain.Blocks import Block
    
+
+Target_N = '0000800000000000000000000000000000000000000000000000000000000000'
+
 if __name__=='__main__':
     manager = Manager()
     N,M = map(int,input().split())
@@ -16,7 +19,7 @@ if __name__=='__main__':
         'nonce':0,
         'Merkle_tree':['0']
     })
-    fullnodes = [FullNode_Process('192.0.0.'+'%d'%i,8000,genesis,10000000) for i in range(N)]
+    fullnodes = [FullNode_Process('192.0.0.'+'%d'%i,8000,genesis,Target_N) for i in range(N)]
     for node in fullnodes:
         node.start()
     for node in fullnodes:

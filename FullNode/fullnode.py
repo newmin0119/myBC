@@ -2,7 +2,8 @@ import sys, os
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from Blockchain.Crypto_tools import *
-from Blockchain.Block import Block,set_merkle
+from Blockchain.Blocks import Block,set_merkle
+from Blockchain.transactions import make_transaction
 
 
 class FullNode:
@@ -40,16 +41,24 @@ class FullNode:
         Mining process
         """
         header = {
-            'blockHeight': self.longest_chain[-1].blockHeight+1,
-            'prevHash': self.longest_chain[-1],
-            'nonce': '',
-            'Merkle-root': ''
+            'blockHeight': self.longest_chain[-1].Header['blockHeight']+1,
+            'prevHash': sha256(str(self.longest_chain[-1].Header).encode()).hexdigest(),
+            'nonce': 0,
+            'Merkle_root': ''
         }
+        for i in range(5):
+            self.tx_pool.append(make_transaction('seller pubkey','buyer pubkey',modelName='Genesis',price=i))
         # set_merkle 함수 활용 merkle 생성
-        set_merkle(self.tx_pool) # -- pool 추후 집합으로 변경 필요
-        # nonce 값 조정, nonce<=self.target_N
-        # 
-        while 1: pass
+        Merkle_tree = set_merkle(self.tx_pool) # -- pool 추후 집합으로 변경 필요
+        header['Merkle_root'] = Merkle_tree[0]
+        # nonce 값 조정, header's hash<=self.target_N
+        while sha256(str(header).encode()).hexdigest()>self.target_N:
+            header['nonce']+=1
+        print(header)
+        header['Merkle_tree'] = Merkle_tree
+        self.longest_chain.append(Block(header))
+        #while(sha256())
+        
 
     # 트랜잭션 받는 함수
     # from UserNode

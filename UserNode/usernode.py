@@ -2,7 +2,7 @@ import sys, os, time, random,string
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from ecdsa.keys import SigningKey,VerifyingKey
-from Blockchain.transaction import make_transaction
+from Blockchain.transactions import make_transaction
 from Blockchain.Crypto_tools import create_sig
 randrange = random.randrange
 
