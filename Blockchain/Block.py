@@ -1,5 +1,7 @@
-from transaction import make_transaction
-from Blockchain.Crypto_tools import *
+import sys, os
+sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
+from .transaction import make_transaction
+from .Crypto_tools import *
 class Block:
     """
     {
@@ -75,6 +77,7 @@ def print_example():
         'nonce': 12345678,
         'Merkle_tree': set_merkle(tx)[1:]
     }
-    print(Block(block_arg))
-print_example()
+    B = [Block(block_arg),Block(block_arg)]
+    print(B[0])
+## print_example()
 ### 예시 Block 출력 end ###

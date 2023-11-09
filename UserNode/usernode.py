@@ -1,7 +1,6 @@
 import sys, os, time, random,string
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
-#from Blockchain.transaction import *
 from ecdsa.keys import SigningKey,VerifyingKey
 from Blockchain.transaction import make_transaction
 from Blockchain.Crypto_tools import create_sig
@@ -51,6 +50,6 @@ class UserNode:
         pass
 
 ### 예시 UserNode 및 트랜잭션 출력 ###
-u1 = UserNode(1,4)
-u1.generate_transaction(1)
+## u1 = UserNode(1,4)
+## u1.generate_transaction(1)
 ### 예시 UserNode end ###

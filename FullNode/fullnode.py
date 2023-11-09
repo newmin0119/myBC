@@ -1,9 +1,8 @@
 import sys, os
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
-from Blockchain.transaction import *
 from Blockchain.Crypto_tools import *
-from Blockchain.Block import *
+from Blockchain.Block import Block,set_merkle
 
 
 class FullNode:
