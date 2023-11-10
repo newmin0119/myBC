@@ -12,11 +12,10 @@ def create_sig(sk,m):
     return sig
 
 # 서명 인증 함수
-def verify_sig(sig, pk_str, m) -> bool:
+def verify_sig(sig, pk, m) -> bool:
     '''
     ECDSA 기반 서명 검증 결과 -> bool
     ECDSA 기반 sig, pk로 검증
     '''
-    pk = VerifyingKey.from_string(pk_str) # str에서 pubkey 보구
     message = bytes(m.encode())
     return pk.verify(sig,message,sha256,sigdecode=sigdecode_string)

@@ -3,7 +3,6 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from Blockchain.Crypto_tools import *
 from Blockchain.Blocks import Block,set_merkle
-from Blockchain.transactions import make_transaction
 
 
 class FullNode:
@@ -19,19 +18,18 @@ class FullNode:
     
     # 트랜잭션 인증 함수
     @classmethod
-    def validate_transactions(self, txs) -> bool:
-        n = len(txs)
-        for i in range(1,n):
-            ## 1) txs(k)'s buyer == txs(k-1)'s seller
-            if txs[i]['input']!=txs[i-1]['output']: return False
-            
-            ## 2) Check immutable value
-            if txs[i]['Vid']!=txs[i-1]['Vid']: return False
-            if txs[i]['modelName']!=txs[i]['modelName']: return False
-            if txs[i]['manufacturedTime']!=txs[i]['manufacturedTime']: return False
-
-            ## 3) Verify signature
-            if verify_sig(txs[i]['sig'],txs[i]['input'],bytes(txs[i-1]['txid'])): return False
+    def validate_transaction(self, tx) -> bool:
+        '''
+        ## 1) txs(k)'s buyer == txs(k-1)'s seller
+        if txs[i]['input']!=txs[i-1]['output']: return False
+        
+        ## 2) Check immutable value
+        if txs[i]['Vid']!=txs[i-1]['Vid']: return False
+        if txs[i]['modelName']!=txs[i]['modelName']: return False
+        if txs[i]['manufacturedTime']!=txs[i]['manufacturedTime']: return False
+        '''
+        ## 3) Verify signature
+        if not verify_sig(tx['sig'],tx['input'],tx['txid']): return False
         
         return True
 
@@ -46,15 +44,12 @@ class FullNode:
             'nonce': 0,
             'Merkle_root': ''
         }
-        for i in range(5):
-            self.tx_pool.append(make_transaction('seller pubkey','buyer pubkey',modelName='Genesis',price=i))
         # set_merkle 함수 활용 merkle 생성
         Merkle_tree = set_merkle(self.tx_pool) # -- pool 추후 집합으로 변경 필요
         header['Merkle_root'] = Merkle_tree[0]
         # nonce 값 조정, header's hash<=self.target_N
         while sha256(str(header).encode()).hexdigest()>self.target_N:
             header['nonce']+=1
-        print(header)
         header['Merkle_tree'] = Merkle_tree
         self.longest_chain.append(Block(header))
         #while(sha256())
