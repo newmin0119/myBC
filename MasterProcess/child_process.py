@@ -6,6 +6,11 @@ from multiprocessing import Process
 from FullNode.fullnode import FullNode
 from UserNode.usernode import UserNode
 
+'''
+Sample Transactions
+'''
+Pubkey  = []
+
 class FullNode_Process(Process,FullNode):
     def __init__(self,genesis,target,read_pipe,write_pipe):
         super().__init__()
@@ -34,10 +39,13 @@ class UserNode_Process(Process,UserNode):
     def __init__(self, write_pipe):
         super().__init__()
         UserNode.__init__(self,randint(1,3))
+        Pubkey.append(self.pk)
         self.pipe = write_pipe
  
     def run(self):
-        while(True):
-            txs = self.generate_transaction('')
+        for output in Pubkey:
+            if self.pk == output:
+                continue
+            txs = self.generate_transaction(output)
             self.pipe.send(txs)
             time.sleep(15)
