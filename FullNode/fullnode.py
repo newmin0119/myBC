@@ -1,4 +1,6 @@
 import sys, os
+from _thread import *
+from socket import *
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from Blockchain.Crypto_tools import *
@@ -11,10 +13,15 @@ class FullNode:
 
     """
     # 클래스 최초 생성 함수
-    def __init__(self,genesisBlock,target_N) -> None:
+    def __init__(self,genesisBlock,target_N,link_FN,ip,port) -> None:
+        # args
+        # genesisBlock,target_N,link_FN,ip,port,w_pipe,r_pipe
         self.longest_chain = [genesisBlock]
         self.tx_pool = []
         self.target_N = target_N
+        self.node_Socket = socket(AF_INET,SOCK_DGRAM)
+        self.node_Socket.bind((ip,port))
+        self.link_FN = link_FN
     
     # 트랜잭션 인증 함수
     @classmethod
@@ -55,16 +62,23 @@ class FullNode:
         #while(sha256())
         
 
-    # 트랜잭션 받는 함수
-    # from UserNode
-    def listen_transaction(self,tx):
+    # 채굴된 블락 받는 함수
+    # from another FullNode
+    def listen_block(self,block):
+        if self.validate_transactions(tx):
+            self.tx_pool.append(tx)
+
+    # 채굴한 블락 flooding 함수
+    # to another FullNode
+    def send_block(self,block):
         if self.validate_transactions(tx):
             self.tx_pool.append(tx)
     
-    # 채굴된 블락 받는 함수
-    # from MasterProcess
-    def listen_Block(self,block):
-        if self.validate_transactions(block):
-            # Mining process 중지
-            self.longest_chain.append(block)
-            # 그 다음 Mining 시작
+    # 트랜잭션 받는 함수
+    # from UserNode
+    def listen_transaction(self,tx):
+        while True:
+            data = self.r_pipe.recv()
+            for x in data:
+                if self.validate_transaction(x):
+                    self.tx_pool.append(x)

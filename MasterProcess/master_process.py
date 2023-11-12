@@ -29,7 +29,7 @@ def construct_P2P(N,M,fullnodes,usernodes,listen_Block):
         listen_Block.append(read_M)
     for u,f,w,r in link_User_to_Full:
         usernodes[u] = UserNode_Process(write_pipe=w)
-        fullnodes[f] = FullNode_Process(genesis=genesis,target=Target_N,read_pipe=r,write_pipe=link_Master_toFull[f])
+        fullnodes[f] = FullNode_Process(genesis,Target_N,'192.0.0.'+str(f),8333,r,'여기에는 풀노드 임의 링크',link_Master_toFull[f])
     
     for f in range(N):
         if f not in check:

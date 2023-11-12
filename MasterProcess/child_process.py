@@ -1,4 +1,4 @@
-import socket,sys,os,time
+import sys,os,time
 from random import randint
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from multiprocessing import Process
@@ -12,22 +12,16 @@ Sample Transactions
 Pubkey  = []
 
 class FullNode_Process(Process,FullNode):
-    def __init__(self,genesis,target,read_pipe,write_pipe):
+    def __init__(self,*args):
         super().__init__()
-        FullNode.__init__(self,genesisBlock=genesis,target_N=target)
-        self.r_pipe = read_pipe
-        self.w_pipe = write_pipe
+        FullNode.__init__(self,args)
     
     def run(self):
-        print('Full Process 시작')
-        if self.r_pipe is not None: 
-            data = self.r_pipe.recv()
-            for x in data:
-                if self.validate_transaction(x):
-                    self.tx_pool.append(x)
-        print('\n\n채굴 시작\n\n')
+        '''
+        스레드로 리슨 블락 리슨 트랜잭션 채굴프로세스 돌리기
+        '''
         self.mining_process()
-        print('채굴종료\n\n')
+        
         # print('채굴종료\n\n직전 채굴된 Block\n\n')
         # print('Header:', self.longest_chain[-1].Header)
         # print('Transactions:', self.longest_chain[-1].transactions)
