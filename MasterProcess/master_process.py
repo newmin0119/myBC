@@ -4,7 +4,9 @@ from random import randint
 # import socket
 from multiprocessing import Manager,Pipe
 
-from child_process import FullNode_Process, UserNode_Process
+# from child_process import FullNode_Process, UserNode_Process
+from ChildProcess.fullnode import FullNode
+from ChildProcess.usernode import UserNode
 from Blockchain.Blocks import Block
    
 
@@ -12,7 +14,7 @@ Target_N = '0000080000000000000000000000000000000000000000000000000000000000'
 usernodes = []
 fullnodes = []
 Master_from_full = []
-def construct_P2P(N,M):
+def construct_P2P(N,M,genesis):
     '''
     가상 P2P Network를 구성하는 function
     매개변수 N과 M은 각각 fullnode의 수와 usernode의 수로 대응
@@ -26,8 +28,8 @@ def construct_P2P(N,M):
     이때, 임의의 ip와 port번호 ( 여기서는 Bitcoin의 port번호 8333을 이용 )를 같이 전달
     '''
     user_to_full = []
-    full_from_user = [list()]*N
-    full_to_full = [list()]*N
+    full_from_user = [list() for _ in range(N)]
+    full_to_full = [list() for _ in range(N)]
     full_to_Master = []
     
     # User <-> Full 구성
@@ -42,9 +44,12 @@ def construct_P2P(N,M):
     for full_A in range(N-1):
         for full_B in range(full_A+1,N):
             if randint(0,1):
-                full_to_full[full_A].append(full_B)
-                full_to_full[full_B].append(full_A)
+                full_to_full[full_A].append('192.168.0.'+str(full_B))
+                full_to_full[full_B].append('192.168.0.'+str(full_A))
     
+    for full_num in range(N):
+        print(full_num,': ',full_to_full[full_num])
+
     # Full <-> Master 구성
     for full_num in range(N):
         read_pipe, write_pipe = Pipe()
@@ -54,30 +59,54 @@ def construct_P2P(N,M):
 
     # usernode Process 생성
     for user_num in range(M):
-        usernodes[user_num] = UserNode_Process(write_pipe=user_to_full(user_num))
+        usernodes.append(UserNode(randint(1,3),user_to_full[user_num]))
 
     # fullnode Process 생성
-    for full_num in range(N): 
-        fullnodes[full_num] = FullNode_Process(genesis,Target_N,'192.0.0.'+str(f),8333,
-                                               full_from_user[full_num],
-                                               full_to_Master[full_num])
+    for full_num in range(N):
+        fullnodes.append(FullNode( genesis,                     #GenesisBlock
+                                        Target_N,                    #Target_number
+                                        '192.168.0.'+str(full_num),    #ip
+                                        8333,                        #Port NUmber
+                                        full_from_user[full_num],    #연결된 Usernode와의 Read_Pipe 리스트
+                                        full_to_full[full_num],      #연결된 Fullnode와의 FullNode의 ip 리스트
+                                        full_to_Master[full_num]))    #Masterprocess와 연결된 Write_Pipe 리스트
     
 if __name__=='__main__':
     manager = Manager()
     
+    # Genesis Block 
     genesis = Block({
         'blockHeight':0,
         'prevHash':'',
         'nonce':0,
         'Merkle_tree':['0']
     })
+
+    # Master Process가 관리하는 longest Chain
     longest = [genesis]
 
-    print('Genests: \n',genesis,end='\n\n')
+    # print('Genests: \n',genesis,end='\n\n')
+    
+    #FullNode 수와 UserNode 수 입력
     N,M = map(int,input().split())
 
-    construct_P2P(N,M)
+    """
+    P2P Network 구성
+    return값이 아닌, 전역변수 Process리스트인 usernodes와  fullnodes에 저장
+    """
+    construct_P2P(N,M,genesis)
+
     
+
+
+    for fullnode in fullnodes:
+        print(fullnode)
+        fullnode.start()
+    
+    for usernode in usernodes:
+        print(usernode)
+        usernode.start()
+    '''
     while True:
         for node in fullnodes:
             node.start()
@@ -91,4 +120,5 @@ if __name__=='__main__':
                     node.kill()
                 break
         print(longest[-1].Header['blockHeight'],'번째 Block: \n',longest[-1],end='\n\n')
+    '''
        
