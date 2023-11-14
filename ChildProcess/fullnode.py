@@ -4,8 +4,9 @@ from socket import *
 from multiprocessing import Process
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
-from Blockchain.Crypto_tools import *
-from Blockchain.Blocks import Block,set_merkle
+from Crypto_tools import *
+from Structure.Blocks import *
+from Structure.Blockchain import *
 
 
 class FullNode(Process):
@@ -16,38 +17,24 @@ class FullNode(Process):
     # 클래스 최초 생성 함수
     def __init__(self,*args) -> None:
         # args
-        # genesisBlock,target_N,ip,port,w_pipe,r_pipe
+        # genesisBlock,ip,port,r_pipe,peer_list,w_pipe,fullnode_i
         super().__init__()
-        self.longest_chain      =   [args[0]]
+        self.Blockchain         =   BlockChain(args[0],0)
         self.memset             =   set()
-        self.target_N           =   args[1]
         self.node_Socket        =   socket(AF_INET,SOCK_DGRAM)
-        self.ip                 =   args[2]
-        self.port               =   args[3]
-        self.read_pipe          =   args[4]
-        self.peer_fullnode_ip   =   args[5]
-        self.write_pipe         =   args[6]
+        self.ip                 =   args[1]
+        self.port               =   args[2]
+        self.read_pipe          =   args[3]
+        self.peer_fullnode_ip   =   args[4]
+        self.write_pipe         =   args[5]
+        self.node_number        =   args[6]
+        self.user_transactions  =   dict()
     
     def __str__(self):
-        myself = ''
-        myself += 'longest_chain:'
-        for block in self.longest_chain:
-            myself+='\n'+str(block)
-        myself+= '\n'
-
-        myself += 'memset:'
-        for transaction in self.memset:
-            myself+= '\n'+str(transaction)
-        myself += '\n'
-
-        myself += 'Socket: '+self.node_Socket.__str__()+'\n'
-        myself += 'ip: '+self.ip+'\n'
-        myself += 'port: '+str(self.port)+'\n'
-        myself += 'Peer\'s address:'
-        for peerip in self.peer_fullnode_ip:
-            myself += '\n'+peerip
-        myself += '\n'
-
+        myself = '######################################################################'
+        myself += str(self.node_number) + '\'s longest_chain:'
+        myself += self.Blockchain.__str__()
+        myself += '######################################################################'
         return myself
     
     def run(self):
@@ -80,45 +67,42 @@ class FullNode(Process):
         Mining process
         """
         while True:
-            header = {
-                'blockHeight': self.longest_chain[-1].Header['blockHeight']+1,
-                'prevHash': sha256(str(self.longest_chain[-1].Header).encode()).hexdigest(),
-                'nonce': 0,
-                'Merkle_root': ''
-            }
-            # set_merkle 함수 활용 merkle 생성
-            include_transaction = []
-            for _ in range(min(len(self.memset),4)):
-                include_transaction.append(self.memset.pop())
-            Merkle_tree = set_merkle(include_transaction) # -- pool 추후 집합으로 변경 필요
-            header['Merkle_root'] = Merkle_tree[0]
-            # nonce 값 조정, header's hash<=self.target_N
-            while sha256(str(header).encode()).hexdigest()>self.target_N:
-                header['nonce']+=1
-            header['Merkle_tree'] = Merkle_tree
-            self.longest_chain.append(Block(header))
-        #while(sha256())
+            txs = []
+            # 적절히 txs 안에 memset에서 골라오는 함수 필요
+            mined_Block = self.Blockchain.mining(txs)
+            self.write_pipe.send(mined_Block)
+            # 채굴한 block socket으로 peer FullNode로 flooding 하는 함수 필요
+    
         
 
     # 채굴된 블락 받는 함수
     # from another FullNode
-    def listen_block(self,block):
-        if self.validate_transactions(tx):
-            self.memset.append(tx)
+    def listen_block(self):
+        pass
 
     # 채굴한 블락 flooding 함수
     # to another FullNode
     def send_block(self,block):
-        if self.validate_transactions(tx):
-            self.memset.append(tx)
+        pass
     
     # 트랜잭션 받는 함수
     # from UserNode
     def listen_transaction(self):
-        while True:
+        flag = True
+        while flag:
             for pipe in self.read_pipe:
-                data = pipe.recv()
-                for x in data:
-                    if self.validate_transaction(x):
-                        #self.memset.add(x)
-                        print(x)
+                data,user_id = pipe.recv()
+                if data==-1:
+                    pipe.close()
+                    flag = False
+                    continue
+                if user_id not in self.user_transactions.keys():
+                    self.user_transactions[user_id] = []
+                self.user_transactions[user_id].append([0]*len(data))
+                for i in range(len(data)):
+                    if self.validate_transaction(data[i]):
+                        self.user_transactions[user_id][-1][i]=data[i]
+                        self.memset.add((user_id,data[i]['trandeCnt'],i))
+                        # print(x) # -> 정상적으로 추가된 transaction 출력
+                for id,x,carnum in self.memset:
+                    print(id, ': ', x, '번째 ',carnum,'번 차량')

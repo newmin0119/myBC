@@ -3,8 +3,8 @@ from multiprocessing import Process
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from ecdsa.keys import SigningKey,VerifyingKey
-from Blockchain.transactions import make_transaction
-from Blockchain.Crypto_tools import create_sig
+from Structure.transactions import make_transaction
+from Crypto_tools import create_sig
 randrange = random.randrange
 
 veh_models = [
@@ -21,7 +21,8 @@ letters_set = string.ascii_letters+string.digits
 class UserNode(Process):
     def __init__(self,*args):
         super().__init__()
-        car_num,write_pipe = args
+        user_id,car_num,write_pipe = args
+        self.user_id = user_id
         self.write_pipe = write_pipe
         self.my_Vehs = []
         """ 차 정보 정해진 개수만큼 랜덤하게 생성 """
@@ -42,11 +43,13 @@ class UserNode(Process):
 
         return myself
 
-    def run(self,*args):
+    def run(self):
         txs_list = self.generate_transaction()
         for txs in txs_list:
-            self.write_pipe.send(txs)
+            self.write_pipe.send((txs,self.user_id))
             time.sleep(15)
+        self.write_pipe.send(-1,self.user_id)
+        self.write_pipe.close()
 
     def generate_transaction(self):
         keys = [[0]*6 for _ in range(len(self.my_Vehs))]

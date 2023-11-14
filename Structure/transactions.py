@@ -1,7 +1,7 @@
 import time
 import sys, os
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
-from .Crypto_tools import *
+from Crypto_tools import *
 from random import random,randrange
 
 def make_transaction(input_pubkey,output_pubKey,Vid=None,modelName="",tradeCnt=1,price=0,manufacturedTime=''):

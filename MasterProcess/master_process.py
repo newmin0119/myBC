@@ -2,12 +2,12 @@ import sys, os
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from random import randint
 # import socket
-from multiprocessing import Manager,Pipe
+from multiprocessing import Manager,Pipe,Queue,Process
 
 # from child_process import FullNode_Process, UserNode_Process
 from ChildProcess.fullnode import FullNode
 from ChildProcess.usernode import UserNode
-from Blockchain.Blocks import Block
+from Structure.Blocks import Block
    
 
 Target_N = '0000080000000000000000000000000000000000000000000000000000000000'
@@ -59,18 +59,25 @@ def construct_P2P(N,M,genesis):
 
     # usernode Process 생성
     for user_num in range(M):
-        usernodes.append(UserNode(randint(1,3),user_to_full[user_num]))
+        # user_id, car_num, write_pipe
+        usernodes.append(UserNode(user_num,randint(1,3),user_to_full[user_num]))
 
     # fullnode Process 생성
     for full_num in range(N):
-        fullnodes.append(FullNode( genesis,                     #GenesisBlock
-                                        Target_N,                    #Target_number
-                                        '192.168.0.'+str(full_num),    #ip
-                                        8333,                        #Port NUmber
-                                        full_from_user[full_num],    #연결된 Usernode와의 Read_Pipe 리스트
-                                        full_to_full[full_num],      #연결된 Fullnode와의 FullNode의 ip 리스트
-                                        full_to_Master[full_num]))    #Masterprocess와 연결된 Write_Pipe 리스트
-    
+        # genesisBlock,ip,port,r_pipe,peer_list,w_pipe,fullnode_i
+        fullnodes.append(FullNode(  genesis,
+                                    '192.168.0.'+str(full_num),
+                                    8333,
+                                    full_from_user[full_num],
+                                    full_to_full[full_num],
+                                    full_to_Master[full_num],
+                                    full_num
+                                )
+                        )
+def listen_Block(pipe,q):
+    while True:
+        q.put(pipe.recv())
+
 if __name__=='__main__':
     manager = Manager()
     
@@ -79,11 +86,10 @@ if __name__=='__main__':
         'blockHeight':0,
         'prevHash':'',
         'nonce':0,
-        'Merkle_tree':['0']
-    })
+        'Merkle_root':['0']
+    },['0'])
 
     # Master Process가 관리하는 longest Chain
-    longest = [genesis]
 
     # print('Genests: \n',genesis,end='\n\n')
     
@@ -95,17 +101,22 @@ if __name__=='__main__':
     return값이 아닌, 전역변수 Process리스트인 usernodes와  fullnodes에 저장
     """
     construct_P2P(N,M,genesis)
-
-    
-
+    q = Queue()
+    for pipe in Master_from_full:
+        p = Process(target=listen_Block,args=(pipe,q,))
+        p.start()
 
     for fullnode in fullnodes:
-        print(fullnode)
         fullnode.start()
     
     for usernode in usernodes:
-        print(usernode)
         usernode.start()
+    while True:
+        if not q.empty():
+            Fi, tempblock = q.get()
+    
+    
+
     '''
     while True:
         for node in fullnodes:
