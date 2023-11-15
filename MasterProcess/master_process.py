@@ -8,9 +8,7 @@ from multiprocessing import Manager,Pipe,Queue,Process
 from ChildProcess.fullnode import FullNode
 from ChildProcess.usernode import UserNode
 from Structure.Blocks import Block
-   
 
-Target_N = '0000080000000000000000000000000000000000000000000000000000000000'
 usernodes = []
 fullnodes = []
 Master_from_full = []
@@ -46,10 +44,11 @@ def construct_P2P(N,M,genesis):
             if randint(0,1):
                 full_to_full[full_A].append('192.168.0.'+str(full_B))
                 full_to_full[full_B].append('192.168.0.'+str(full_A))
-    
+    '''
+    fullnode의 링크를 보이는 print
     for full_num in range(N):
         print(full_num,': ',full_to_full[full_num])
-
+    '''
     # Full <-> Master 구성
     for full_num in range(N):
         read_pipe, write_pipe = Pipe()
@@ -105,7 +104,7 @@ if __name__=='__main__':
     for pipe in Master_from_full:
         p = Process(target=listen_Block,args=(pipe,q,))
         p.start()
-
+    
     for fullnode in fullnodes:
         fullnode.start()
     
@@ -114,6 +113,7 @@ if __name__=='__main__':
     while True:
         if not q.empty():
             Fi, tempblock = q.get()
+            print(Fi,': ',tempblock)
     
     
 

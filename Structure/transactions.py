@@ -31,8 +31,8 @@ def make_transaction(input_pubkey,output_pubKey,Vid=None,modelName="",tradeCnt=1
     a['price']=price
     a['tradingTime']=time.strftime('%Y.%m.%d', time.localtime(time.time()))
     
-    a['input'] = input_pubkey
-    a['output'] = output_pubKey
+    a['input'] = input_pubkey.to_string()
+    a['output'] = output_pubKey.to_string()
     a['txid'] = sha256(str(a).encode()).hexdigest()
 
     return a

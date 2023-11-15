@@ -59,7 +59,7 @@ class Block:
         for i in range(leaf_n):
             if i<N:
                 ### merkle_tree leaf node인 경우 트랜잭션의 id를 sha256 hash를 두 번 거친 값
-                merkle_tree[i+leaf_n]=HASH256(tx[i]['txid'])
+                merkle_tree[i+leaf_n]=HASH256(eval(tx[i])['txid'])
                 last_leaf = merkle_tree[i+leaf_n]
                 ### leaf node 및 2의 제곱수 형태 형성을 위한 더미데이터 아닌 경우 트랜잭션 정보 삽입
                 merkle_tree[(i+leaf_n)<<1]=tx[i] 

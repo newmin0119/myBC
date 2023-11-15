@@ -1,7 +1,7 @@
 import sys, os
-import threading
 from socket import *
 from multiprocessing import Process
+from threading import Thread
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 
 from Crypto_tools import *
@@ -28,7 +28,7 @@ class FullNode(Process):
         self.peer_fullnode_ip   =   args[4]
         self.write_pipe         =   args[5]
         self.node_number        =   args[6]
-        self.user_transactions  =   dict()
+        
     
     def __str__(self):
         myself = '######################################################################'
@@ -38,23 +38,26 @@ class FullNode(Process):
         return myself
     
     def run(self):
-        threading.Thread(target=self.listen_transaction()).start()
-
-        
+        Thread(target=self.listen_transaction).start()
+        Thread(target=self.mining_process).start()
+            
 
     # 트랜잭션 인증 함수
-    def validate_transaction(self, tx) -> bool:
-        '''
-        ## 1) txs(k)'s buyer == txs(k-1)'s seller
-        if txs[i]['input']!=txs[i-1]['output']: return False 
+    def validate_transaction(self, user_transactions,user_id,i,tx) -> bool:
         
-        ## 2) Check immutable value
-        if txs[i]['Vid']!=txs[i-1]['Vid']: return False
-        if txs[i]['modelName']!=txs[i]['modelName']: return False
-        if txs[i]['manufacturedTime']!=txs[i]['manufacturedTime']: return False
-        '''
+        if len(user_transactions[user_id])>1:    
+            prevTx = user_transactions[user_id][-2][i]
+            
+            ## 1) txs(k)'s buyer == txs(k-1)'s seller
+            if prevTx['output']!=tx['input']:
+                return False 
+            ## 2) Check immutable value
+            if prevTx['Vid']!=tx['Vid']: return False
+            if prevTx['modelName']!=tx['modelName']: return False
+            if prevTx['manufacturedTime']!=tx['manufacturedTime']: return False
+            
         ## 3) Verify signature
-        if not verify_sig(tx['sig'],tx['input'],tx['txid']): return False
+        if not verify_sig(tx['sig'],VerifyingKey.from_string(tx['input']),tx['txid']): return False
         
         return True
 
@@ -67,12 +70,17 @@ class FullNode(Process):
         Mining process
         """
         while True:
-            txs = []
+            txs = set()
+            for _ in range(min(4,len(self.memset))):
+                txs.add(self.memset.pop())
+            self.memset.update(txs)                 # mining 중간에 해당 프로세스가 중단되는 것을 고려하여, 아직 memset에서 pop 하지 않음
             # 적절히 txs 안에 memset에서 골라오는 함수 필요
-            mined_Block = self.Blockchain.mining(txs)
-            self.write_pipe.send(mined_Block)
+            mined_Block = self.Blockchain.mining(list(txs))
+            self.write_pipe.send((self.node_number,mined_Block))
+            self.memset = self.memset - txs         # mining 중간에 프로세스 종료되지 않고 잘 전달되었다면, memset에서 사용한 트랜잭션 pop
+            
             # 채굴한 block socket으로 peer FullNode로 flooding 하는 함수 필요
-    
+
         
 
     # 채굴된 블락 받는 함수
@@ -89,6 +97,7 @@ class FullNode(Process):
     # from UserNode
     def listen_transaction(self):
         flag = True
+        user_transactions  =   dict()
         while flag:
             for pipe in self.read_pipe:
                 data,user_id = pipe.recv()
@@ -96,13 +105,10 @@ class FullNode(Process):
                     pipe.close()
                     flag = False
                     continue
-                if user_id not in self.user_transactions.keys():
-                    self.user_transactions[user_id] = []
-                self.user_transactions[user_id].append([0]*len(data))
+                if user_id not in user_transactions.keys():
+                    user_transactions[user_id] = []
+                user_transactions[user_id].append([0]*len(data))
                 for i in range(len(data)):
-                    if self.validate_transaction(data[i]):
-                        self.user_transactions[user_id][-1][i]=data[i]
-                        self.memset.add((user_id,data[i]['trandeCnt'],i))
-                        # print(x) # -> 정상적으로 추가된 transaction 출력
-                for id,x,carnum in self.memset:
-                    print(id, ': ', x, '번째 ',carnum,'번 차량')
+                    if self.validate_transaction(user_transactions,user_id,i,data[i]):
+                        user_transactions[user_id][-1][i]=data[i]
+                        self.memset.add(str(data[i]))
