@@ -7,7 +7,6 @@ latest = -1
 block_info = 0
 header_hash = 1
 class BlockChain:
-    
     def __init__(self, genesis_block,start_height,is_orphan=False) -> None:
         self.start_height = start_height
         self.Longest_Chain = []
@@ -27,19 +26,21 @@ class BlockChain:
         return ret
 
 
-    def find_prev_block(self,hash,height):
+    def find_block(self,hash,height):
         '''
         BlockChain에서 해당하는 헤더의 hash값과 height으로 block의 위치를 알려줌
          - Longest_Chain에 포함된경우 -1,
          - orphan_chains에 포함된 경우 해당하는 orphan_chain의 인덱스를 반환
          - 모두 포함되지 않은 경우 -2를 반환
         '''
-        if self.Longest_Chain[height-self.start_height][header_hash] == hash:
-            return is_in_longest
+        if height<len(self.Longest_Chain):
+            for a,b in self.Longest_Chain:
+                if b == hash:
+                    return is_in_longest
         n = len(self.orphan_chains)
         for i in range(n):
             orphan = self.orphan_chains[i]
-            ret = orphan.find_prev_block(hash,height)
+            ret = orphan.find_block(hash,height)
             if ret != is_not_include:
                 return i
         return is_not_include
@@ -58,10 +59,14 @@ class BlockChain:
                     orphan chain의 orphan을
                 orphan_chains로 이동
         '''
+        hash = sha256(str(block.Header).encode()).hexdigest()
         prevHash = block.Header['prevHash']
         height = block.Header['blockHeight']
-        i = self.find_prev_block(prevHash,height-1)
-        hash = sha256(str(block.Header).encode()).hexdigest()
+        if self.find_block(hash,height) != is_not_include:
+            return False
+        i = self.find_block(prevHash,height-1)
+        if i==is_not_include:
+            return False
         if i==is_in_longest:
             if height == len(self.Longest_Chain) + self.start_height:
                 self.Longest_Chain.append((block,hash))
@@ -74,7 +79,9 @@ class BlockChain:
                 self.orphan_chains.append(BlockChain(self.Longest_Chain[start_height:],start_height,True))
                 self.Longest_Chain = self.Longest_Chain[:start_height]+self.orphan_chains[i].Longest_Chain
                 self.orphan_chains[i] = self.orphan_chains[i].orphan_chains
+        return block
     
+    # 아마 이제는 쓰지 않을 함수
     def mining(self,txs):
         """
         Mining process
@@ -92,45 +99,39 @@ class BlockChain:
         while sha256(str(header).encode()).hexdigest()>Target_N:
             header['nonce']+=1
         B = Block(header,Merkle_tree)
-        self.add_block(B)
         return B
 
 
 ### 예시 BlockChain 출력 ###
 def print_example():
     tx = []
+    sk = SigningKey.generate()
+    pk = sk.get_verifying_key()
     for i in range(15):
-        tx.append(make_transaction('seller pubkey','buyer pubkey',modelName='Genesis',price=i))
-    merkle = Block.set_merkle(tx[:5])
+        tx.append(str(make_transaction(pk,pk,modelName='Genesis',price=i)))
     header= {
                     'blockHeight':0,
                     'prevHash':'asdfasdfadsfasdfasdfasdfasdf',
                     'nonce': 12345678,
-                    'Merkle_root': merkle[1]
+                    'Merkle_root': ''
             }
-    B = Block(header,merkle) # genesis
+    B = Block(header,['0']) # genesis
 
     BC = BlockChain(B,0) # genesis만 존재하는 블록체인 생성
-    merkle = Block.set_merkle(tx[5:10])
-    for i in range(2):
-        header= {
-                        'blockHeight':1,
-                        'prevHash':BC.Longest_Chain[0][1],
-                        'nonce': i,
-                        'Merkle_root': merkle[1]
-                }
-        BC.add_block(Block(header,merkle)) # 처음은 longest chain에, 두번째는 orphan에 block 삽입됨
-    merkle = Block.set_merkle(tx[10:])
-    header= {
-                    'blockHeight':2,
-                    'prevHash':BC.orphan_chains[0].Longest_Chain[0][1],
-                    'nonce': 12345678,
-                    'Merkle_root': merkle[1]
-            }
-    BC.add_block(Block(header,merkle)) # orphan에 존재하는 chain에 추가되는 block 삽입
-    ### 결국 orphan이 longest로 이동 ###
-    print(BC.__str__())
+    B = BC.mining(tx[:5])
+    print(BC.find_block(sha256(str(B.Header).encode()).hexdigest(),1))
+    print(BC.add_block(B))
+    print(BC.find_block(sha256(str(B.Header).encode()).hexdigest(),1))
+    # header= {
+    #                 'blockHeight':2,
+    #                 'prevHash':BC.orphan_chains[0].Longest_Chain[0][1],
+    #                 'nonce': 12345678,
+    #                 'Merkle_root': merkle[1]
+    #         }
+    # BC.add_block(Block(header,merkle)) # orphan에 존재하는 chain에 추가되는 block 삽입
+    # ### 결국 orphan이 longest로 이동 ###
+    # print(BC.__str__())
     
-        
+
 # print_example()
 ### 예시 BlockChain 출력 end ###

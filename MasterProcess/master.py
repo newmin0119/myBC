@@ -2,7 +2,7 @@ import sys, os,time
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from random import randint
 # import socket
-from multiprocessing import Manager,Pipe, Queue
+from multiprocessing import Manager,Pipe, Queue, Process
 from threading import Thread
 # from child_process import FullNode_Process, UserNode_Process
 from ChildProcess.fullnodes import FullNode
@@ -113,44 +113,37 @@ if __name__=='__main__':
     """
     construct_P2P(N,M,genesis)
     q = Queue()
+    pipe_list = []
     for pipe in Master_from_full:
         p = Thread(target=listen_Block,args=(pipe,q,))
         p.start()
+        pipe_list.append(p)
     Blockchain_by_FullNode = []
     
     for usernode in usernodes:
         usernode.start()
-        
+    fullnode_process = []
     for fullnode in fullnodes:
-        fullnode.start()
-
+        fp = Process(target=fullnode.run)
+        fp.start()
+        fullnode_process.append(fp)
         Blockchain_by_FullNode.append(BlockChain(genesis,0))
     
     recv_thread = Thread(target=receive_block,args=(Blockchain_by_FullNode,q,)).start()
+    
+    
+    fullnode_process
+    
+    for pipe_process in pipe_list:
+        pipe_process.join()
+    for usernode in usernodes:
+        usernode.join()
+    for fullnode in fullnode_process:
+        fullnode.join()
+    recv_thread.join()
     while True:
         op = int(input())
         if op==0:
             for fullnode in fullnodes:
                 fullnode.kill()
-                fullnode.join()
-
-    time.sleep(60)
-    for fullnode in fullnodes:
-        print(fullnode.Blockchain.Longest_Chain[-1][0])
-        pass
-    '''
-    while True:
-        for node in fullnodes:
-            node.start()
-        for node in usernodes:
-            node.start()
-        for read_M in listen_Block:
-            B = read_M.recv()
-            if B.Header['blockHeight'] > longest[-1].Header['blockHeight']:
-                longest.append(B)
-                for node in fullnodes:
-                    node.kill()
-                break
-        print(longest[-1].Header['blockHeight'],'번째 Block: \n',longest[-1],end='\n\n')
-    '''
-       
+                fullnode.join()   

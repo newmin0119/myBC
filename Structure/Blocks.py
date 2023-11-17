@@ -1,4 +1,4 @@
-import sys, os
+import sys, os,time
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from .transactions import *
 from Crypto_tools import *
@@ -71,6 +71,8 @@ class Block:
             for i in range(leaf_n):
                 ### 리프 노드가 아닌 노드는 자식노드의 값을 concatnate 한 값을 sha256 hash를 두 번 거친 값
                 merkle_tree[i+leaf_n]=HASH256(merkle_tree[(i+leaf_n)<<1]+merkle_tree[((i+leaf_n)<<1)+1])
+        if merkle_tree[1]=='':
+            merkle_tree[1]=HASH256('DUMMY')
         return merkle_tree
 
     @staticmethod
@@ -87,9 +89,23 @@ class Block:
         start = finish>>1
         txs = []
         for i in range(start,finish,2):
-            if merkle[i]:
+            if merkle[i] and merkle[i]!='0':
                 txs.append(merkle[i])
         return txs
+    @staticmethod
+    def rebuild_from_str(str_Block):
+        list_Block_component = list(str_Block.split('\n'))
+        Header = {}
+        Header['blockHeight']    = int(list_Block_component[1].split()[1])
+        Header['prevHash']      = list_Block_component[2].split()[1]
+        Header['nonce']         = int(list_Block_component[3].split()[1])
+        Header['Merkle_root']   = list_Block_component[4].split()[1]
+        transactions            = []
+        for transaction in list_Block_component[8:]:
+            if transaction=='------------------------------': continue
+            transactions.append(transaction[3:])
+        Merkle = Block.set_merkle(transactions)
+        return Block(Header,Merkle)
 
 
 ### 예시 Block ###
