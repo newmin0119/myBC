@@ -25,7 +25,7 @@ def make_transaction(input_pubkey,output_pubKey,Vid=None,modelName="",tradeCnt=1
         a['Vid'] = sha256(str(random()).encode()).hexdigest()
     else:
         a['Vid'] = Vid
-    a['trandeCnt'] = tradeCnt
+    a['tradeCnt'] = tradeCnt
     a['modelName'] = modelName
     a['manufacturedTime'] = manufacturedTime
     a['price']=price
@@ -38,7 +38,7 @@ def make_transaction(input_pubkey,output_pubKey,Vid=None,modelName="",tradeCnt=1
     return a
 
 def validate_transaction(prev_tx,target_tx) -> str:
-        if target_tx['tradeCnt']>0:
+        if prev_tx is not None:
             ## 1) txs(k)'s buyer == txs(k-1)'s seller
             if prev_tx['output']!=target_tx['input']:
                 return 'This transaction\'s input is not prev_Transaction\'s output'

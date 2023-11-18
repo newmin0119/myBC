@@ -37,7 +37,7 @@ def construct_P2P(N,M,genesis):
     
     # User <-> Full 구성
     for user_num in range(M):
-        full_num = randint(0,M-1)
+        full_num = randint(0,N-1)
         read_pipe,write_pipe = Pipe()
         user_to_full.append(write_pipe)
         full_from_user[full_num].append(read_pipe)
@@ -91,15 +91,15 @@ def receive_block(q):
     global Mined_Block_by_FullNode
     while True:
         Fi, tempblock = q.get()
-        print('#####F%d mined Succesfully!!!!######\n<<-- Block -->>' % Fi,
-              tempblock.Header['blockHeight']
-            # tempblock    
+        print('#####F%d mined Succesfully!!!!######\n<<-- Block -->>' % Fi,'\n',
+              tempblock
             )
         Mined_Block_by_FullNode[Fi].append(tempblock)
         transactions = Block.find_txs(tempblock.Merkle)
         for transaction in transactions:
+            transaction = eval(transaction)
             if transaction['Vid'] not in transactions_by_Vid.keys():
-                transactions_by_Vid[transactions_by_Vid] = []
+                transactions_by_Vid[transaction['Vid']] = []
             transactions_by_Vid[transaction['Vid']].append((transaction,tempblock.Header['blockHeight']))
 
 if __name__=='__main__':
@@ -167,13 +167,14 @@ if __name__=='__main__':
         elif op.split()[0] == 'verify-transaction':
             if len(op.split()) !=2:
                 print('Not a valid operation. Please input likes \'verify-transaciton <Fi>\'')
+                continue
             Fi = int(op.split()[1][1])
             if len(Mined_Block_by_FullNode[Fi]) > 0:
                 latest_block = Mined_Block_by_FullNode[Fi][-1]
                 transactions = Block.find_txs(latest_block.Merkle)
                 if len(transactions) > 0:
                     Latest_tx = transactions[-1]
-                    if Latest_tx['tradeCnt'] > 0:
+                    if Latest_tx['tradeCnt'] > 1:
                         prev_tx = transactions_by_Vid[Latest_tx['Vid']][Latest_tx['tradeCnt']-1][0]
                         print('prev_Transaction\n->',prev_tx)
                         print('Latest_Transaction\n->',Latest_tx)
@@ -183,8 +184,9 @@ if __name__=='__main__':
             else:
                 print(Fi,'가 채굴 시도한 Block이 아직 없습니다.',sep='')
         elif op.split()[0] == 'trace':
-            if len(op.split()) !=2:
+            if len(op.split()) !=3:
                 print('Not a valid operation. Please input likes \'trace <Vid> ALL or <k>\'')
+                continue
             Vid = op.split()[1]
             if Vid not in transactions_by_Vid.keys():
                 print(Vid,'is not a valid Vid. There does not exist')

@@ -51,6 +51,7 @@ class Block:
         또한 이진 트리의 index 삽입과 연산의 효율성을 위해, list에 저장한 트리의 루트 노드의 index는 1
         따라서, index 0은 None
         '''
+        tx = list(tx)
         N = len(tx)
         leaf_n = 1
         while leaf_n<N: leaf_n<<=1

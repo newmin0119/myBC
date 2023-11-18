@@ -43,12 +43,14 @@ class FullNode():
         self.gather_block_thread        = Thread(target=self.listen_block,args=(self.block_q,))
         self.listen_transaction_thread = Thread(target=self.listen_transaction)
 
+        self.listen_transaction_thread.start()
         self.mining_thread.start()
         for block_listen_thread in self.listen_block_threads:
             block_listen_thread.start()
         self.gather_block_thread.start()
         self.snapshot_thread.start()
 
+        self.listen_transaction_thread.join()
         self.mining_thread.join()
         for block_listen_thread in self.listen_block_threads:
             block_listen_thread.join()
@@ -65,9 +67,7 @@ class FullNode():
 
     # 트랜잭션 인증 함수
     def validate_transaction(self,user_id,i,tx) -> bool:
-        prev_tx = None
-        if tx['tradeCnt']>0:    
-            prev_tx = self.user_transactions[user_id][tx['tradeCnt']-1][i]
+        prev_tx = self.user_transactions[user_id][tx['tradeCnt']-1][i]
         return validate_transaction(prev_tx,tx)
 
     #def
@@ -180,22 +180,11 @@ class FullNode():
                     continue
                 if user_id not in self.user_transactions.keys():
                     self.user_transactions[user_id] = []
-                self.user_transactions[user_id].append([0]*len(data))
+                self.user_transactions[user_id].append([None]*len(data))
                 for i in range(len(data)):
                     if self.validate_transaction(user_id,i,data[i]) == 'Verified Successfully':
                         self.user_transactions[user_id][-1][i]=data[i]
                         self.memset.add(str(data[i]))
-
-    def find_transaction(self,tx):
-        tx_tradeCnt = tx['tradeCnt']
-        for user_id in len(self.user_transactions):
-            for car_num in len(self.user_transactions[user_id][tx_tradeCnt]):
-                if tx['Vid']==self.user_transactions[user_id][tx_tradeCnt][car_num]['Vid']:
-                    if tx_tradeCnt==0:
-                        return None,tx,self.validate_transaction(user_id,car_num,tx)
-                    else:
-                        prevTx = self.user_transactions[user_id][tx_tradeCnt-1][car_num]
-                        return prevTx,tx,self.validate_transaction(user_id,car_num,tx)
 
     def __str__(self):
         myself = '######################################################################'
