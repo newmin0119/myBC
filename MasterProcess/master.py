@@ -2,7 +2,7 @@ import sys, os,time
 sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from random import randint
 # import socket
-from multiprocessing import Manager,Pipe, Queue, Process
+from multiprocessing import Manager,Pipe, Queue, Process,Event
 from threading import Thread
 # from child_process import FullNode_Process, UserNode_Process
 from ChildProcess.fullnodes import FullNode
@@ -13,6 +13,7 @@ from Structure.Blockchain import BlockChain
 usernodes = []
 fullnodes = []
 Master_from_full = []
+events_for_snapshot = []
 def construct_P2P(N,M,genesis):
     '''
     가상 P2P Network를 구성하는 function
@@ -69,11 +70,14 @@ def construct_P2P(N,M,genesis):
     # fullnode Process 생성
     for full_num in range(N):
         # genesisBlock,ip,port,r_pipe,peer_list,w_pipe,fullnode_i
+        event_for_snapshot  = Event()
+        events_for_snapshot.append(event_for_snapshot)
         fullnodes.append(FullNode(  genesis,
                                     full_from_user[full_num],
                                     full_to_full[full_num],
                                     full_to_Master[full_num],
-                                    full_num
+                                    full_num,
+                                    event_for_snapshot
                                 )
                         )
 def listen_Block(pipe,q):
@@ -87,7 +91,7 @@ def receive_block(Blockchain_by_FullNode,q):
               tempblock.Header['blockHeight']
             # tempblock    
             )
-        Blockchain_by_FullNode[Fi].add_block(tempblock)
+        Blockchain_by_FullNode[Fi].append(tempblock)
 
 if __name__=='__main__':
     manager = Manager()
@@ -118,7 +122,7 @@ if __name__=='__main__':
         p = Thread(target=listen_Block,args=(pipe,q,))
         p.start()
         pipe_list.append(p)
-    Blockchain_by_FullNode = []
+    Mined_Block_by_FullNode = []
     
     for usernode in usernodes:
         usernode.start()
@@ -127,13 +131,36 @@ if __name__=='__main__':
         fp = Process(target=fullnode.run)
         fp.start()
         fullnode_process.append(fp)
-        Blockchain_by_FullNode.append(BlockChain(genesis,0))
+        Mined_Block_by_FullNode.append(list())
     
-    recv_thread = Thread(target=receive_block,args=(Blockchain_by_FullNode,q,)).start()
-    
-    
-    fullnode_process
-    
+    recv_thread = Thread(target=receive_block,args=(Mined_Block_by_FullNode,q,))
+    recv_thread.start()
+    while True:
+        op = input()
+        if op=='exit':
+            for fullnode in fullnodes:
+                fullnode.kill()
+            for usernode in usernodes:
+                usernode.kill()
+            recv_thread.terminate()
+            
+        elif op.split()[0]=='snapshot':
+            if op.split()[2]=='ALL':
+                for event in events_for_snapshot:
+                    event.set()
+                    time.sleep(0.1)
+            else:
+                Fi = int(op.split()[2][1])
+                events_for_snapshot[Fi].set()
+                time.sleep(0.1)
+        elif op.split()[0] == 'verify-transaction':
+            Fi = int(op.split()[1][1])
+            Latest_tx = Mined_Block_by_FullNode[Fi].transactions[-1]
+            prev, latest, result =fullnodes[op.split()[1][1]].find_transaction(Latest_tx)
+            print('prev_Transaction\n',prev)
+            print('Latest_Transaction\n',latest)
+            print('Validation result: ',result)
+    '''
     for pipe_process in pipe_list:
         pipe_process.join()
     for usernode in usernodes:
@@ -141,9 +168,5 @@ if __name__=='__main__':
     for fullnode in fullnode_process:
         fullnode.join()
     recv_thread.join()
-    while True:
-        op = int(input())
-        if op==0:
-            for fullnode in fullnodes:
-                fullnode.kill()
-                fullnode.join()   
+    '''    
+                
