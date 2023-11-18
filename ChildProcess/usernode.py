@@ -47,7 +47,7 @@ class UserNode(Process):
         txs_list = self.generate_transaction()
         for txs in txs_list:
             self.write_pipe.send((txs,self.user_id))
-            time.sleep(1)
+            time.sleep(15)
         self.write_pipe.send((-1,self.user_id))
         self.write_pipe.close()
 

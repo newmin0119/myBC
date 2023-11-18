@@ -7,6 +7,7 @@ sys.path.append(os.path.dirname(os.path.abspath(os.path.dirname(__file__))))
 from Crypto_tools import *
 from Structure.Blocks import *
 from Structure.Blockchain import *
+from Structure.transactions import validate_transaction
 Target_N = '0000008000000000000000000000000000000000000000000000000000000000'
 '''
 본 클래스는 FullNode가 Process 클래스를 상속받지 않고,
@@ -64,26 +65,10 @@ class FullNode():
 
     # 트랜잭션 인증 함수
     def validate_transaction(self,user_id,i,tx) -> bool:
-        
+        prev_tx = None
         if tx['tradeCnt']>0:    
-            prevTx = self.user_transactions[user_id][tx['tradeCnt']-1][i]
-            
-            ## 1) txs(k)'s buyer == txs(k-1)'s seller
-            if prevTx['output']!=tx['input']:
-                return 'This transaction\'s input is not prev_Transaction\'s output'
-            ## 2) Check immutable value
-            if prevTx['Vid']!=tx['Vid']:
-                return 'Vid is not prev_Transaction\'s'
-            if prevTx['modelName']!=tx['modelName']:
-                return 'ModelName is not prev_Transaction\'s'
-            if prevTx['manufacturedTime']!=tx['manufacturedTime']:
-                return 'ManufacturedTime is not prev_Transaction\'s'
-            
-        ## 3) Verify signature
-        if not verify_sig(tx['sig'],VerifyingKey.from_string(tx['input']),tx['txid']):
-            return 'Signature is not valid'
-        
-        return 'Verified Successfully'
+            prev_tx = self.user_transactions[user_id][tx['tradeCnt']-1][i]
+        return validate_transaction(prev_tx,tx)
 
     #def
 

@@ -37,6 +37,23 @@ def make_transaction(input_pubkey,output_pubKey,Vid=None,modelName="",tradeCnt=1
 
     return a
 
+def validate_transaction(prev_tx,target_tx) -> str:
+        if target_tx['tradeCnt']>0:
+            ## 1) txs(k)'s buyer == txs(k-1)'s seller
+            if prev_tx['output']!=target_tx['input']:
+                return 'This transaction\'s input is not prev_Transaction\'s output'
+            ## 2) Check immutable value
+            if prev_tx['Vid']!=target_tx['Vid']:
+                return 'Vid is not prev_Transaction\'s'
+            if prev_tx['modelName']!=target_tx['modelName']:
+                return 'ModelName is not prev_Transaction\'s'
+            if prev_tx['manufacturedTime']!=target_tx['manufacturedTime']:
+                return 'ManufacturedTime is not prev_Transaction\'s'
+        
+        ## 3) Verify signature
+        if not verify_sig(target_tx['sig'],VerifyingKey.from_string(target_tx['input']),target_tx['txid']):
+            return 'Signature is not valid'
+        return 'Verified Successfully'
 ### 예시 transaction
 def print_example():
     print(make_transaction('seller pubkey','buyer pubkey',modelName='Genesis',price=30000000,manufactured='2023.10.31'))

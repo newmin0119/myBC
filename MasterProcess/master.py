@@ -9,11 +9,14 @@ from ChildProcess.fullnodes import FullNode
 from ChildProcess.usernode import UserNode
 from Structure.Blocks import Block
 from Structure.Blockchain import BlockChain
+from Structure.transactions import validate_transaction
 
 usernodes = []
 fullnodes = []
 Master_from_full = []
 events_for_snapshot = []
+Mined_Block_by_FullNode = []
+transactions_by_Vid = dict()
 def construct_P2P(N,M,genesis):
     '''
     가상 P2P Network를 구성하는 function
@@ -84,14 +87,20 @@ def listen_Block(pipe,q):
     while True:
         q.put(pipe.recv())
 
-def receive_block(Blockchain_by_FullNode,q):
+def receive_block(q):
+    global Mined_Block_by_FullNode
     while True:
         Fi, tempblock = q.get()
         print('#####F%d mined Succesfully!!!!######\n<<-- Block -->>' % Fi,
               tempblock.Header['blockHeight']
             # tempblock    
             )
-        Blockchain_by_FullNode[Fi].append(tempblock)
+        Mined_Block_by_FullNode[Fi].append(tempblock)
+        transactions = Block.find_txs(tempblock.Merkle)
+        for transaction in transactions:
+            if transaction['Vid'] not in transactions_by_Vid.keys():
+                transactions_by_Vid[transactions_by_Vid] = []
+            transactions_by_Vid[transaction['Vid']].append((transaction,tempblock.Header['blockHeight']))
 
 if __name__=='__main__':
     manager = Manager()
@@ -122,7 +131,6 @@ if __name__=='__main__':
         p = Thread(target=listen_Block,args=(pipe,q,))
         p.start()
         pipe_list.append(p)
-    Mined_Block_by_FullNode = []
     
     for usernode in usernodes:
         usernode.start()
@@ -133,7 +141,7 @@ if __name__=='__main__':
         fullnode_process.append(fp)
         Mined_Block_by_FullNode.append(list())
     
-    recv_thread = Thread(target=receive_block,args=(Mined_Block_by_FullNode,q,))
+    recv_thread = Thread(target=receive_block,args=(q,))
     recv_thread.start()
     while True:
         op = input()
@@ -145,6 +153,8 @@ if __name__=='__main__':
             recv_thread.terminate()
             
         elif op.split()[0]=='snapshot':
+            if len(op.split()) !=3:
+                print('Not a valid operation. Please input likes \'snapshot myBC ALL or <Fi>\'')
             if op.split()[2]=='ALL':
                 for event in events_for_snapshot:
                     event.set()
@@ -153,13 +163,50 @@ if __name__=='__main__':
                 Fi = int(op.split()[2][1])
                 events_for_snapshot[Fi].set()
                 time.sleep(0.1)
+            
         elif op.split()[0] == 'verify-transaction':
+            if len(op.split()) !=2:
+                print('Not a valid operation. Please input likes \'verify-transaciton <Fi>\'')
             Fi = int(op.split()[1][1])
-            Latest_tx = Mined_Block_by_FullNode[Fi].transactions[-1]
-            prev, latest, result =fullnodes[op.split()[1][1]].find_transaction(Latest_tx)
-            print('prev_Transaction\n',prev)
-            print('Latest_Transaction\n',latest)
-            print('Validation result: ',result)
+            if len(Mined_Block_by_FullNode[Fi]) > 0:
+                latest_block = Mined_Block_by_FullNode[Fi][-1]
+                transactions = Block.find_txs(latest_block.Merkle)
+                if len(transactions) > 0:
+                    Latest_tx = transactions[-1]
+                    if Latest_tx['tradeCnt'] > 0:
+                        prev_tx = transactions_by_Vid[Latest_tx['Vid']][Latest_tx['tradeCnt']-1][0]
+                        print('prev_Transaction\n->',prev_tx)
+                        print('Latest_Transaction\n->',Latest_tx)
+                        print(validate_transaction(prev_tx,Latest_tx))
+                else:
+                    print(Fi, '가 채굴 시도한 최신 block에 트랜잭션이 포함되지 않았습니다.',sep='')
+            else:
+                print(Fi,'가 채굴 시도한 Block이 아직 없습니다.',sep='')
+        elif op.split()[0] == 'trace':
+            if len(op.split()) !=2:
+                print('Not a valid operation. Please input likes \'trace <Vid> ALL or <k>\'')
+            Vid = op.split()[1]
+            if Vid not in transactions_by_Vid.keys():
+                print(Vid,'is not a valid Vid. There does not exist')
+            elif op.split()[2]=='ALL':
+                for transaction,blockHeight in reversed(transactions_by_Vid[Vid]):
+                    print('in ',blockHeight)
+                    print('\t',transaction,sep='')
+            else:
+                for transaction,blockHeight in reversed(transactions_by_Vid[Vid])[:int(op.split()[2])]:
+                    print('in ',blockHeight)
+                    print('\t',transaction,sep='')
+        else:
+            print('Wrong Operation.')
+
+            print('to snapshot Fullnodes\' Blockchain:')
+            print('Please input likes \'snapshot myBC ALL or <Fi>')
+
+            print('to verify the Fullnode\'s last transaction:')
+            print('Please input likes \'verify-transaciton <Fi>')
+
+            print('to trace the Vehicle\'s tranding record: ')
+            print('trace <Vid> ALL or <k>')
     '''
     for pipe_process in pipe_list:
         pipe_process.join()
