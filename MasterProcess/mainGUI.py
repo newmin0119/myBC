@@ -35,8 +35,6 @@ class MyBC(QWidget):
         self.setWindowTitle('myBC - Blockchain Project')
         self.resize(800, 500)
         self.center()
-        self.show()
-
     def center(self):
         qr = self.frameGeometry()
         cp = QDesktopWidget().availableGeometry().center()
@@ -46,4 +44,5 @@ class MyBC(QWidget):
 if __name__ == '__main__':
    app = QApplication(sys.argv)
    ex = MyBC()
+   ex.show()
    sys.exit(app.exec_())
