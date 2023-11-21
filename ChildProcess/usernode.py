@@ -21,10 +21,11 @@ letters_set = string.ascii_letters+string.digits
 class UserNode(Process):
     def __init__(self,*args):
         super().__init__()
-        user_id,car_num,write_pipe = args
+        user_id,car_num,write_pipe,terminate_event = args
         self.user_id = user_id
         self.write_pipe = write_pipe
         self.my_Vehs = []
+        self.terminate_event = terminate_event
         """ 차 정보 정해진 개수만큼 랜덤하게 생성 """
         for _ in range(car_num):
             model,price = veh_models[random.randrange(1,6)]
@@ -48,6 +49,8 @@ class UserNode(Process):
         for txs in txs_list:
             self.write_pipe.send((txs,self.user_id))
             time.sleep(15)
+            if self.terminate_event.is_set():
+                break
         self.write_pipe.send((-1,self.user_id))
         self.write_pipe.close()
 

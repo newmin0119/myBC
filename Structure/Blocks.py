@@ -33,13 +33,14 @@ class Block:
     ### Block의 데이터를 출력하는 함수, 객체의 반환형을 str 형태로, dict 형태로 복원 가능
     def __str__(self) -> str:
         ret = ''
-        ret += 'Header: \n'
+        ret += '\033[32mHeader: \n'
         for val in self.Header:
-            ret+= val+': '+str(self.Header[val])+'\n'
-        ret += '\ntransactions: \n------------------------------'
+            ret+= '\t\033[32m' + val + ': \033[0m' + str(self.Header[val]) + '\n'
+        ret += '\033[32mtransactions: \n------------------------------'
+        
         txs = self.find_txs(self.Merkle)
         for i in range(len(txs)):
-            ret += '\n'+str(i)+ ': ' + str(txs[i])+'\n------------------------------'
+            ret += '\n\t\033[32m'+str(i)+ ': \033[0m' + str(eval(txs[i])['Vid']) + ', \033[32m거래 순서: \033[0m' + str(eval(txs[i])['tradeCnt'])
         return ret
 
     ### Merkle tree 구성 함수
@@ -112,9 +113,10 @@ class Block:
 ### 예시 Block ###
 def print_example():
     tx = []
-
+    sk = SigningKey.generate()
+    vk = sk.get_verifying_key()
     for i in range(5):
-        tx.append(make_transaction('seller pubkey','buyer pubkey',modelName='Genesis',price=i))
+        tx.append(str(make_transaction(vk,vk,modelName='Genesis',price=i)))
     merkle = Block.set_merkle(tx)
     header= {
                     'blockHeight':0,
@@ -123,8 +125,11 @@ def print_example():
                     'Merkle_root': merkle[1]
             }
     B = Block(header,merkle)
+    print(B.__str__())
+    '''
     txs = B.find_txs(B.Merkle)
     for transaction in txs:
         print(transaction)
+    '''
 # print_example()
 ### 예시 Block 출력 end ###
