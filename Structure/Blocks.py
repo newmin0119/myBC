@@ -20,6 +20,28 @@ class Block:
             ...
         ]
     }
+    A Class of Block.
+    It's module and object
+    It contains 3 static functions
+        - set_merkle
+            : 전달받은 트랜잭션 리스트를 통해 머클트리를 구성
+            : 인덱스 1부터 시작하는 리스트 형태
+            : 각 인덱스 i 에 대해
+                -> i//2는 parent
+                -> 따라서 i*2 와 i*2+1은 children
+            : 이진트리를 구성하고, 리프노드가 모두 같은 depth에 위치하기 위해 마지막 트랜잭션의 hash값을 복사하여 삽입
+            : 또한 리프노드가 더미 데이터가 아닌 경우 인덱스 i에 대해 i*2의 인덱스에 트랜잭션 데이터를 저장
+            : 따라서 트랜잭션의 개수 <= N인 2의 제곱수 N에 대해 N*4가 총 트리의 노드 수 크기
+            : 또한 리프노드까지의 depth는 log2 N
+        - find_txs
+            : 전달받은 머클트리에서 트랜잭션을 뽑아냄
+            : 위에서 설명한 set_merkle의 노드 삽입 순서의 역순으로 진행
+            : 각 리프노드를 찾고, 처음 더미데이터를 발견할때까지가 트랜잭션의 hash값
+            : 그렇게 찾은 index*2에 위치한 실제 트랜잭션 데이터를 list에 담아 반환
+        - rebuild_from_str
+            : string 형태로 변환된 block에서 헤더와 머클트리를 재구성하는 함수
+            : 다만, 구현된 Process에서 실제 사용하지는 함수
+            : 후에 로컬환경이 아닌 실제 네트워크 상에서 운용된다면, socket을 통해 데이터를 전달할 때 사용 가능
     """
     ### Block 생성 및 Header 구성
     def __init__(self, *args):

@@ -38,22 +38,37 @@ def make_transaction(input_pubkey,output_pubKey,Vid=None,modelName="",tradeCnt=1
     return a
 
 def validate_transaction(prev_tx,target_tx) -> str:
-        if prev_tx is not None:
-            ## 1) txs(k)'s buyer == txs(k-1)'s seller
-            if prev_tx['output']!=target_tx['input']:
-                return 'This transaction\'s input is not prev_Transaction\'s output'
-            ## 2) Check immutable value
-            if prev_tx['Vid']!=target_tx['Vid']:
-                return 'Vid is not prev_Transaction\'s'
-            if prev_tx['modelName']!=target_tx['modelName']:
-                return 'ModelName is not prev_Transaction\'s'
-            if prev_tx['manufacturedTime']!=target_tx['manufacturedTime']:
-                return 'ManufacturedTime is not prev_Transaction\'s'
+    """
+    이전 트랜잭션이 없다면 prev_tx에 None이 전달됨
+        -> 바로 3번으로 진행
+        -> 각 번호의 검증 결과가 성공적이라면 항상 계속 진행
+    1) 이전 트랜잭션의 구매자와 검증하려는 트랜잭션의 판매자가 같은지 검증
+        -> 다르다면 'This transaction\'s input is not prev_Transaction\'s output' 반환
+    2) 이전 트랜잭션과 검증하려는 트랜잭션의 immutable 필드 같은지 검증
+        -> Vid가 다른 경우:                 'This transaction\'s input is not prev_Transaction\'s output'
+        -> ModelName이 다른 경우:           'ModelName is not prev_Transaction\'s'
+        -> ManufacturedTime이 다른 경우:    'ManufacturedTime is not prev_Transaction\'s'
+    3) input의 public key를 통해 signature를 검증
+        -> 유효하지 않은 경우: 'Signature is not valid'
+    
+    모든 검증이 올바르게 인증된 경우: 'Verified Successfully'
+    """
+    if prev_tx is not None:
+        ## 1) txs(k)'s buyer == txs(k-1)'s seller
+        if prev_tx['output']!=target_tx['input']:
+            return 'This transaction\'s input is not prev_Transaction\'s output'
+        ## 2) Check immutable value
+        if prev_tx['Vid']!=target_tx['Vid']:
+            return 'Vid is not prev_Transaction\'s'
+        if prev_tx['modelName']!=target_tx['modelName']:
+            return 'ModelName is not prev_Transaction\'s'
+        if prev_tx['manufacturedTime']!=target_tx['manufacturedTime']:
+            return 'ManufacturedTime is not prev_Transaction\'s'
         
-        ## 3) Verify signature
-        if not verify_sig(target_tx['sig'],VerifyingKey.from_string(target_tx['input']),target_tx['txid']):
-            return 'Signature is not valid'
-        return 'Verified Successfully'
+    ## 3) Verify signature
+    if not verify_sig(target_tx['sig'],VerifyingKey.from_string(target_tx['input']),target_tx['txid']):
+        return 'Signature is not valid'
+    return 'Verified Successfully'
 ### 예시 transaction
 def print_example():
     print(make_transaction('seller pubkey','buyer pubkey',modelName='Genesis',price=30000000,manufactured='2023.10.31'))
