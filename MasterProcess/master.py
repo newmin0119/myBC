@@ -11,14 +11,19 @@ from Structure.Blocks import Block
 from Structure.Blockchain import BlockChain
 from Structure.transactions import validate_transaction
 
-usernodes = []
-fullnodes = []
-Master_from_full = []
-events_for_snapshot = []
-Mined_Block_by_FullNode = []
-transactions_by_Vid = dict()
+usernodes = []                  # Usernode Child Process를 담는 list
+fullnodes = []                  # Fullnode Child Process를 담는 list
+Master_from_full = []           # 각 Fullnode로부터 mining 결과를 받는 Pipe를 담는 list
+events_for_snapshot = []        # 각 Fullnode에게 스냅샷 명령을 내리는 Event 를 담는 list
+Mined_Block_by_FullNode = []    # 각 Fullnode로부터 받은 mining block을 순서대로 저장하는 list를 담는 list
+transactions_by_Vid = dict()    # 각 채굴된 결과로부터 트랜잭션을 저장하는 Dictionary
+                                #   key: Vid
+                                #   value: List
+                                #       각 list의 원소는 튜플 형태
+                                #       ( 트랜잭션, 트랜잭션이 저장된 block의 height )
 
-terminate_event = Event()
+
+terminate_event = Event()       # exit 명령어 입력시 모든 Fullnode와 Usernode에게 종료를 알리는 Event 객체
 
 def construct_P2P(N,M,genesis):
     '''
@@ -26,12 +31,23 @@ def construct_P2P(N,M,genesis):
     매개변수 N과 M은 각각 fullnode의 수와 usernode의 수로 대응
 
     PRNG를 이용하여
-     - 각 UserNode는 임의의 FullNode로         Pipe를 이용, 단방향 연결:    user_to_full, full_from_user
-     - 각 FullNode는 임의의 다른 FullNode로     Socket을 이용, 양방향 연결:  full_to_full   
-     - 그리고 모든 FullNode는 MasterProcess로   Pipe를 이용, 단방향 연결:   full_to_master, mastter_from_full
+        - 각 UserNode는 임의의 FullNode로         Pipe를 이용, 단방향 연결:    user_to_full, full_from_user
+        - 각 FullNode는 임의의 다른 FullNode로     이중 Pipe를 이용, 양방향 연결:  full_to_full   
+        - 그리고 모든 FullNode는 MasterProcess로   Pipe를 이용, 단방향 연결:   full_to_master, mastter_from_full
 
-    이후, 생성된 Pipe와 Socket을 각각 User와 Full Node class로 argument로 전달
-    이때, 임의의 ip와 port번호 ( 여기서는 Bitcoin의 port번호 8333을 이용 )를 같이 전달
+    이후, 생성된 Pipe와 필요한 Event 객체를 각각 User와 Full Node class로 argument로 전달
+    또한, Master Process에서도 Read Pipe를 유지하여 Full Node로부터 Data를 넘겨 받음
+
+    PRNG 사용 방법
+        1) 각 Usernode는 생성된 Fullnode 중 랜덤하게 하나의 Fullnode를 채택하여 연결된다
+            -> 따라서 어떠한 Usernode와도 연결되지 않은 Fullnode가 존재할 가능성이 있다.
+        2) 각 Fullnode는 생성된 다른 Fullnode와 개별적으로 50%의 확률로 연결되거나 되지 않는다
+            -> 따라서 모든 Fullnode가 연결되지 않을 수 있다.
+            -> 이 경우, 독립적인 여러개의 Consensus Chain을 가진 Network가 구성된다.
+        하지만,
+        => 1번의 경우 Fullnode보다 압도적으로 많은 Usernode인 기존의 Bitcoin Network의 특성과
+        => 2번의 경우 Fullnode가 충분히 많은 수가 유지되는 기존의 Bitcoin Network의 특성이 조합된다면
+        평균적으로 모든 node가 하나의 Chain으로 연결되게 되고, 모든 채굴 노드는 충분한 수의 연결된 유저노드를 가지게 된다.
     '''
     user_to_full = []
     full_from_user = [list() for _ in range(N)]
@@ -124,6 +140,31 @@ def transaction_fixed_attributes(tx):
 
 
 if __name__=='__main__':
+    """
+    This is main code
+    Manager object can control All the Child Process
+    And also it has N+1 threads. 
+        N == the number of Fullnodes
+    1) Receive_block Thread 
+        - Print Mining record
+    Listen_Block Thread
+        - Listening Block from pipe which is connected with Fi
+    And also it has 4 another actions
+    2) Snapshot myBC <ALL> or <Fi>.
+        - When excute with 'ALL', print longest chains that all the FullNodes thinks of as correct.
+        - When excute with <Fi>, print a longest chain that the specified FullNode think of as correct.
+            -> 0 <= i <= N-1, when N FullNodes exist.
+    3) Verify-transaction <Fi>
+        - Print the last transaction in the most recent Block <Fi> tried to mine.
+        - And also print the result of verification.
+    4) Trace <Vid> 'All' or <k>
+        - When excute with 'ALL', print all transactions for specified vehicle.
+        - When excute with <k>, print k transactions for specified vehicle from the first.
+    5) exit
+        - It set the terminate_event
+        - And All the Child Processes can notice that
+        - then, they will be terminated soon
+    """
     manager = Manager()
     
     # Genesis Block 
