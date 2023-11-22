@@ -57,7 +57,7 @@ def construct_P2P(N,M,genesis):
     # User <-> Full 구성
     for user_num in range(M):
         full_num = randint(0,N-1)
-        read_pipe,write_pipe = Pipe()
+        read_pipe,write_pipe = Pipe()       # Process 간 통신 Pipe 생성
         user_to_full.append(write_pipe)
         full_from_user[full_num].append(read_pipe)
 
@@ -66,11 +66,12 @@ def construct_P2P(N,M,genesis):
     for full_A in range(N-1):
         for full_B in range(full_A+1,N):
             if randint(0,1):
-                print(full_A,'<--->',full_B)
-                Aread_pipe, Bwrite_pipe = Pipe()
-                Bread_pipe, Awrite_pipe = Pipe()
-                full_to_full[full_A].append((Aread_pipe,Awrite_pipe))
+                #print(full_A,'<--->',full_B)       # ->    50%이기 때문에, N이 작다면 아예 연결이 안되는 경우가 존재.
+                                                    #       이를 위해 연결이 너무 적다면 다시 실행시키기 위해 출력하는 코드
+                Aread_pipe, Bwrite_pipe = Pipe()    # A가 수신받고고 B가 송신하는 pipe
+                Bread_pipe, Awrite_pipe = Pipe()    # B가 수신받고고 A가 송신하는 pipe
                 
+                full_to_full[full_A].append((Aread_pipe,Awrite_pipe))
                 full_to_full[full_B].append((Bread_pipe,Bwrite_pipe))
     '''
     fullnode의 링크를 보이는 print
@@ -79,7 +80,7 @@ def construct_P2P(N,M,genesis):
     '''
     # Full <-> Master 구성
     for full_num in range(N):
-        read_pipe, write_pipe = Pipe()
+        read_pipe, write_pipe = Pipe()          # 채굴된 Block 송수신 하는 단방향 Pipe
         full_to_Master.append(write_pipe)
         Master_from_full.append(read_pipe)
 
@@ -91,7 +92,7 @@ def construct_P2P(N,M,genesis):
 
     # fullnode Process 생성
     for full_num in range(N):
-        # genesisBlock,ip,port,r_pipe,peer_list,w_pipe,fullnode_i
+        # genesisBlock, pipe with user, pipe with full, pipe with Master, Fi, snapshot event. exit event
         event_for_snapshot  = Event()
         events_for_snapshot.append(event_for_snapshot)
         fullnodes.append(FullNode(  genesis,
@@ -103,6 +104,8 @@ def construct_P2P(N,M,genesis):
                                     terminate_event
                                 )
                         )
+# 각 Pipe 마다 Block을 Listen
+# Recv 결과 Q로 push
 def listen_Block(pipe,q):
     while True:
         recv_block = pipe.recv()
@@ -111,6 +114,7 @@ def listen_Block(pipe,q):
             pipe.close()
             break
 
+# Q 의 pop 결과로 Block 수신, 처리
 def gather_block(q,N):
     global Mined_Block_by_FullNode
     count_terminate = 0
@@ -119,8 +123,10 @@ def gather_block(q,N):
         if Fi==-1:
             count_terminate+=1
             continue
+        ## 채굴 기록 출력하기 ##
         print('\033[32ma block with blockHeight %d mined by F%d(report arrived at %s)' 
               % (tempblock.Header['blockHeight'], Fi, time.strftime('%H:%M:%S', time.localtime(time.time()))) + '\033[0m')
+        
         Mined_Block_by_FullNode[Fi].append(tempblock)
         transactions = Block.find_txs(tempblock.Merkle)
         for transaction in transactions:
@@ -130,6 +136,7 @@ def gather_block(q,N):
             transactions_by_Vid[transaction['Vid']].append((transaction,tempblock.Header['blockHeight']))
 
 def transaction_fixed_attributes(tx):
+    # main code 출력 부분 간소화를 위한 함수
     ret =   '\n\t\033[33mVid: \033[0m'+ tx['Vid']
     ret +=  '\n\t\033[33mtradeCnt: \033[0m'+ str(tx['tradeCnt'])
     ret +=  '\n\t\033[33mmodelName: \033[0m'+ tx['modelName']
@@ -138,6 +145,7 @@ def transaction_fixed_attributes(tx):
     return ret
 
 def verify_transaction(Fi):
+    # main code 출력 부분 간소화를 위한 함수
     if len(Mined_Block_by_FullNode[Fi]) > 0:
         latest_block = Mined_Block_by_FullNode[Fi][-1]
         transactions = Block.find_txs(latest_block.Merkle)
@@ -252,6 +260,7 @@ if __name__=='__main__':
     gather_thread.start()
     while True:
         op = input()
+        ##### 기능: 종료
         if op=='exit':
             terminate_event.set()
             for event in events_for_snapshot:
@@ -269,6 +278,7 @@ if __name__=='__main__':
             print('recv_thread - terminate')
             break
             
+        ##### 기능: Snapshot
         elif op.split()[0]=='snapshot':
             if len(op.split()) !=3:
                 print('\033[95mNot a valid operation. Please input likes \'snapshot myBC ALL or <Fi>\'\033[0m')
@@ -280,13 +290,18 @@ if __name__=='__main__':
                 Fi = int(op.split()[2][1])
                 events_for_snapshot[Fi].set()
                 time.sleep(0.1)
-            
+        
+        ##### 기능: Verify - trnasaction
+        #### 지정된 풀노드의 최근 블락, 최말단 트랜잭션 검증
         elif op.split()[0] == 'verify-transaction':
             if len(op.split()) !=2:
                 print('\033[95mNot a valid operation. Please input likes \'verify-transaciton <Fi>\'\033[0m')
                 continue
             Fi = int(op.split()[1][1])
             verify_transaction(Fi)
+        
+        ##### 기능: Trace vid
+        #### 지정된 Vid의 역대 트랜잭션 최신순으로 출력
         elif op.split()[0] == 'trace':
             if len(op.split()) !=3:
                 print('\033[95mNot a valid operation. Please input likes \'trace <Vid> ALL or <k>\'\033[95m')
@@ -296,6 +311,8 @@ if __name__=='__main__':
             if keyword != 'ALL':
                 keyword = int(keyword)
             trace_vid(Vid,keyword)
+        
+        # 잘못된 명령어 입력 시 안내 문구 출력
         else:
             print('\033[95mWrong Operation.\033[95m')
 

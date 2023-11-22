@@ -7,7 +7,7 @@ from Structure.transactions import make_transaction
 from Crypto_tools import create_sig
 randrange = random.randrange
 
-veh_models = [
+veh_models = [                          # 가상 vehicle_models data
     ('Genesis_GV80',70000),
     ('Porsche_panamera4',150000),
     ('Mercedes_Benz_Sonderklasse',170000),
@@ -16,7 +16,7 @@ veh_models = [
     ('Lamborghini_Aventador_svj',680000)
 ]
 
-letters_set = string.ascii_letters+string.digits
+letters_set = string.ascii_letters+string.digits    # 임의의 이름 생성을 위한 a~z,A~Z,0~9
 
 class UserNode(Process):
     """

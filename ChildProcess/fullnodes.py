@@ -83,6 +83,7 @@ class FullNode():
 
     
     def run(self):
+        # 아래는 Thread와 Lock variable, Event 생성 부분
         self.blockchain_lock            =   Lock()
         self.block_recv_event           =   Event()
         self.mining_thread              =   Thread(target=self.mining_process)
@@ -92,9 +93,10 @@ class FullNode():
         for r_pipe,w_pipe in self.peer_pipes:
             self.listen_block_threads.append(Thread(target=self.listening_block,args=(r_pipe,self.block_q,)))
         dummy_listening_block = Thread(target=self.listening_block,args=(None,self.block_q,))
-        self.gather_block_thread        = Thread(target=self.listen_block,args=(self.block_q,))
+        self.gather_block_thread        = Thread(target=self.gather_block,args=(self.block_q,))
         self.listen_transaction_thread = Thread(target=self.listen_transaction)
-
+        
+        # 아래는 생성한 쓰레드 실행 부분
         self.listen_transaction_thread.start()
         self.mining_thread.start()
         for block_listen_thread in self.listen_block_threads:
@@ -102,6 +104,8 @@ class FullNode():
         self.gather_block_thread.start()
         self.snapshot_thread.start()
         dummy_listening_block.start()
+
+        # 아래는 생성한 쓰레드 종료를 기다리는 부분
         self.listen_transaction_thread.join()
         self.mining_thread.join()
         for block_listen_thread in self.listen_block_threads:
@@ -109,27 +113,30 @@ class FullNode():
         dummy_listening_block.join()
 
         self.gather_block_thread.join()
-
-        self.block_q.close()
+        
+        self.block_q.close()            # block수신이 모두 끝났으니 Queue 닫는 코드
         self.snapshot_thread.join()
 
-        for r_pipe,w_pipe in self.peer_pipes:
+        for r_pipe,w_pipe in self.peer_pipes: # 모든 fullnode와의 통신이 끝났으므로 해당 Process 측의 Pipe 한쪽 닫기
             r_pipe.close()
             w_pipe.close()
 
     def check_snapshot(self):
         while True:
-            self.event_for_Snapshot.wait()
-            if self.terminate_event.is_set():
+            self.event_for_Snapshot.wait()          # 마스터 프로세스의 스냅샷 요청 대기
+            if self.terminate_event.is_set():       # 마스터 프로세스의 종료 요청이 발생했다면 함수 ( 쓰레드 ) 종료
                 break
+            
+            # 출력
             print('\033[34m#########F',self.node_number,'\'s Longest Chain Snapshot##########\033[0m',sep='')
             print(self.Blockchain.__str__())
-            self.event_for_Snapshot.clear()
+
+            self.event_for_Snapshot.clear()         # 스냅샷 재요청 대기를 위한 clear
 
     # 트랜잭션 인증 함수
     def validate_transaction(self,user_id,i,tx):
         prev_tx = self.user_transactions[user_id][tx['tradeCnt']-1][i]
-        return validate_transaction(prev_tx,tx)
+        return validate_transaction(prev_tx,tx) # transactions module 함수 호출
 
     #def
 
@@ -154,48 +161,49 @@ class FullNode():
                 'nonce': 0,
                 'Merkle_root': ''
             }
+
             # set_merkle 함수 활용 merkle 생성
             Merkle_tree = Block.set_merkle(txs)
             header['Merkle_root'] = Merkle_tree[1]
             
             # 다른 node에서 mine 성공 여부 event로 checking
             flag_event_occur    = False
-            # nonce 값 조정, header's hash<=self.target_N
-            self.block_recv_event.clear()
-            while sha256(str(header).encode()).hexdigest()>Target_N:
-                if self.terminate_event.is_set():
+            self.block_recv_event.clear()                       # 수행 중 Critical Section 사용 요청이 온다면 끝내기 위해 clear
+            
+            while sha256(str(header).encode()).hexdigest()>Target_N:    # nonce 값 조정, header's hash<=self.target_N
+                
+                if self.terminate_event.is_set(): # Master Process의 종료 요청
                     break
-                if self.block_recv_event.is_set():
-                    #print(self.node_number,'가 signal을 받아 종료된다면 이게 출력')
-                    flag_event_occur = True
+                if self.block_recv_event.is_set():  # gather_block thread의 Critical Section 사용 요청
+                    flag_event_occur = True         # 사용 요청을 받아 끝났음을 기록
                     break
                 header['nonce']+=1
             
-            if flag_event_occur:
-                #print(self.node_number, '가 signal을 받아 종료되고, 뒷처리를 한다면 이게 출력')
-                self.block_recv_event.clear()
-                continue
-            if self.terminate_event.is_set():
-                break
+            if flag_event_occur:                    # Critical Section 사용요청을 받아 채굴이 중지되었다면
+                self.block_recv_event.clear()       # Event clear 후
+                continue                            # 채굴 재시작
+            
+            if self.terminate_event.is_set():       # Master Process의 종료 요청을 받아 채굴이 중지되었다면
+                break                               # 채굴 루프 종료
             
             mined_Block = Block(header,Merkle_tree)
             
-            #print(self.node_number,'의 mining 에서 lock acquire한 시점')
-            self.blockchain_lock.acquire()
+            self.blockchain_lock.acquire()          # Blockchain은 Critical Section 이므로, 사용 전 lock variable 잠금   
             self.Blockchain.add_block(mined_Block)
-            self.blockchain_lock.release()
-            #print(self.node_number,'의 mining 에서 lock Release 한 시점')
+            self.blockchain_lock.release()          # Critical Section 사용 후 release
+            
             for i in range(len(txs)):
                 self.memset.popleft()          # mining 중간에 프로세스 종료되지 않고 잘 전달되었다면, memset에서 사용한 트랜잭션 pop
+            
             # 채굴한 block socket으로 peer FullNode로 flooding 하는 함수
             # 먼저 Master Process로 송신
             self.write_pipe.send((self.node_number,mined_Block))
             # 이후 각 peer에게 송신
             self.send_block(mined_Block)
 
-        self.send_block(-1)
-        self.write_pipe.send((-1,-1))
-        self.write_pipe.close()
+        self.send_block(-1)                         # 채굴이 끝났다면
+        self.write_pipe.send((-1,-1))               # pipe 닫기 위한 -1 송신
+        self.write_pipe.close()                     # pipe 한쪽 닫기
         
 
     # 채굴된 블락 받는 함수
@@ -212,26 +220,24 @@ class FullNode():
                     break
 
     # 수신한 블락을 블록체인에 포함하고, 이미 포함했다면 미송신
-    def listen_block(self,q):
+    def gather_block(self,q):
         while len(self.Blockchain.Longest_Chain)<20:
             recv_block = q.get()
             if recv_block == -1:
                 break
             if self.terminate_event.is_set():
                 continue
-            hash = sha256(str(recv_block.Header).encode()).hexdigest()
+            hash = sha256(str(recv_block.Header).encode()).hexdigest()      # 먼저 block header hash
 
-            self.block_recv_event.set()
-            self.blockchain_lock.acquire()
-            is_not_in = self.Blockchain.find_block(hash,recv_block.Header['blockHeight'])
-            if not is_not_in:
+            self.block_recv_event.set()                                     # Critical Section 사용 요청
+            self.blockchain_lock.acquire()                                  # Critical Section 사용 전 lock variable 잠금
+            is_not_in = self.Blockchain.find_block(hash,recv_block.Header['blockHeight'])   # Block chain 사용
+            if not is_not_in:   # is_in
                 continue
-            #('listen한 block Blockchain에 포함시도 전에 현재 최말단 block 출력 in',self.node_number)
-            #print(self.Blockchain.Longest_Chain[-1][0].Header)
-            result=self.Blockchain.add_block(recv_block)
-            self.blockchain_lock.release()
-            #print(self.node_number,'에 ',recv_block.Header['blockHeight'],'번째 블락 탑색이 끝났다면 출력')
-            #print(result)
+            
+            result=self.Blockchain.add_block(recv_block)                    # Critical Section 사용
+            self.blockchain_lock.release()                                  # Critical Section 사용을 마치고 release
+            
             if not result:
                 continue
             self.send_block(recv_block)
@@ -255,6 +261,7 @@ class FullNode():
                     pipe.close()
                     flag = False
                     continue
+                
                 if user_id not in self.user_transactions.keys():
                     self.user_transactions[user_id] = []
                 self.user_transactions[user_id].append([None]*len(data))
