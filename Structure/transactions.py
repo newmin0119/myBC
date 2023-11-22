@@ -45,7 +45,7 @@ def validate_transaction(prev_tx,target_tx) -> str:
     1) 이전 트랜잭션의 구매자와 검증하려는 트랜잭션의 판매자가 같은지 검증
         -> 다르다면 'This transaction\'s input is not prev_Transaction\'s output' 반환
     2) 이전 트랜잭션과 검증하려는 트랜잭션의 immutable 필드 같은지 검증
-        -> Vid가 다른 경우:                 'This transaction\'s input is not prev_Transaction\'s output'
+        -> Vid가 다른 경우:                 'Vid is not equal with prev_Transaction\'s'
         -> ModelName이 다른 경우:           'ModelName is not prev_Transaction\'s'
         -> ManufacturedTime이 다른 경우:    'ManufacturedTime is not prev_Transaction\'s'
     3) input의 public key를 통해 signature를 검증

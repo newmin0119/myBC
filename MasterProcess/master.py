@@ -6,7 +6,7 @@ from multiprocessing import Manager,Pipe, Queue, Process,Event
 from threading import Thread
 # from child_process import FullNode_Process, UserNode_Process
 from ChildProcess.fullnodes import FullNode
-from ChildProcess.usernode import UserNode
+from ChildProcess.usernodes import UserNode
 from Structure.Blocks import Block
 from Structure.Blockchain import BlockChain
 from Structure.transactions import validate_transaction
@@ -225,7 +225,7 @@ if __name__=='__main__':
     # print('Genests: \n',genesis,end='\n\n')
     
     #FullNode 수와 UserNode 수 입력
-    N,M = map(int,input().split())
+    N,M = map(int,input('Full node의 수 N, User node의 수 M\nN, M: ').split())
 
     """
     P2P Network 구성

@@ -67,15 +67,15 @@ class Block:
 
     ### Merkle tree 구성 함수
     @staticmethod
-    def set_merkle(tx) -> list:
+    def set_merkle(txs) -> list:
         '''
         transaction을 트리의 리프노드에 저장, 이진 트리 형태 유지를 위해 리프노드 depth의 마지막 여분은 가장 마지막 트랜잭션의 해쉬값 복사본
         또한, 리프노드의 보조 트리가 하나 더 존재, 리프노드의 2배수 index의 트리 노드는 각 트랜잭션이 존재
         또한 이진 트리의 index 삽입과 연산의 효율성을 위해, list에 저장한 트리의 루트 노드의 index는 1
         따라서, index 0은 None
         '''
-        tx = list(tx)
-        N = len(tx)
+        txs = list(txs)
+        N = len(txs)
         leaf_n = 1
         while leaf_n<N: leaf_n<<=1
         merkle_tree = [None]*(leaf_n<<2)
@@ -83,10 +83,10 @@ class Block:
         for i in range(leaf_n):
             if i<N:
                 ### merkle_tree leaf node인 경우 트랜잭션의 id를 sha256 hash를 두 번 거친 값
-                merkle_tree[i+leaf_n]=HASH256(eval(tx[i])['txid'])
+                merkle_tree[i+leaf_n]=HASH256(eval(txs[i])['txid'])
                 last_leaf = merkle_tree[i+leaf_n]
                 ### leaf node 및 2의 제곱수 형태 형성을 위한 더미데이터 아닌 경우 트랜잭션 정보 삽입
-                merkle_tree[(i+leaf_n)<<1]=tx[i] 
+                merkle_tree[(i+leaf_n)<<1]=txs[i] 
             else:
                 ### 2의 제곱수 형태 형성을 위한 더미데이터 삽입
                 merkle_tree[i+leaf_n]=last_leaf
