@@ -10,7 +10,7 @@ def make_transaction(input_pubkey,output_pubKey,Vid=None,modelName="",tradeCnt=1
     {
         'Vid': 'hexdigest',
         'trandeCnt': int,
-        'modelName': 'hexdigest, str',
+        'modelName': str,
         'manufacturedTime': 'date, str (____.__.__)',
         'price': int,
         'tradingTime': 'date, str (____.__.__)',
