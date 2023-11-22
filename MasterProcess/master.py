@@ -111,7 +111,7 @@ def listen_Block(pipe,q):
             pipe.close()
             break
 
-def receive_block(q,N):
+def gather_block(q,N):
     global Mined_Block_by_FullNode
     count_terminate = 0
     while count_terminate<N:
@@ -137,7 +137,52 @@ def transaction_fixed_attributes(tx):
     ret +=  '\n\t\033[33mprice: \033[0m'+ str(tx['price'])
     return ret
 
+def verify_transaction(Fi):
+    if len(Mined_Block_by_FullNode[Fi]) > 0:
+        latest_block = Mined_Block_by_FullNode[Fi][-1]
+        transactions = Block.find_txs(latest_block.Merkle)
+        if len(transactions) > 0:
+            Latest_tx = eval(transactions[-1])
+            print('\033[34m--------------------------------------------')
+            print('\033[32mtrID: \033[0m'+ Latest_tx['txid'])
+            if Latest_tx['tradeCnt'] > 1:
+                prev_tx = transactions_by_Vid[Latest_tx['Vid']][Latest_tx['tradeCnt']-1][0]
+                print('\033[32mLast Transaction\'s output:      \033[0m',str(prev_tx['output']))
+                print('\033[32mMost Recent Transaction\'s input:\033[0m',str(Latest_tx['input']))
+                print('\033[32mLast transaction\'s\033[0m', transaction_fixed_attributes(prev_tx))
+                print('\033[32mMost Recent Transaction\'s\033[0m', transaction_fixed_attributes(Latest_tx))
+                print('\033[32mtrID\'s signature: \033[0m'+str(Latest_tx['sig']))
+                print('\033[32mverifying using trID’s input: : \033[0m'+str(Latest_tx['input']))
+                print('\033[32mVerify Result: \033[0m', validate_transaction(prev_tx,Latest_tx))
+            else:
+                print('\033[32mMost Recent Transaction is first trade in that Vid\033[0m')
+                print('\033[32mMost Recent Transaction\'s\033[0m', transaction_fixed_attributes(Latest_tx))
+                print('\033[32mverifying using trID’s input: : \033[0m'+ str(Latest_tx['input']))
+                print('\033[32mVerify Result: \033[0m', validate_transaction(None,Latest_tx))
+            print('\033[34m--------------------------------------------\033[0m')
+        else:
+            print('\033[95mF',Fi, '가 채굴 시도한 최신 block에 트랜잭션이 포함되지 않았습니다.\033[0m',sep='')
+    else:
+        print('\033[95mF',Fi,'가 채굴 시도한 Block이 아직 없습니다.\033[0m',sep='')
 
+def trace_vid(Vid,keyword):
+    if Vid not in transactions_by_Vid.keys():
+        print('\033[95m',Vid,' is not a valid Vid. There does not exist\033[0m',sep='')
+    elif keyword=='ALL':
+        for transaction,blockHeight in reversed(transactions_by_Vid[Vid]):
+            print('\033[34m--------------------------------------------')
+            print('\033[32min blockHeight \033[0m',blockHeight)
+            for tx_attribute in transaction.keys():
+                print('\t\033[33m', tx_attribute,': \033[0m', transaction[tx_attribute],sep='')
+            print('\033[34m--------------------------------------------\033[0m')
+    else:
+        k = keyword
+        for transaction,blockHeight in reversed(transactions_by_Vid[Vid][-k:]):
+            print('\033[34m--------------------------------------------')
+            print('\033[32min blockHeight \033[0m',blockHeight)
+            for tx_attribute in transaction.keys():
+                print('\t\033[33m', tx_attribute,': \033[0m', transaction[tx_attribute],sep='')
+            print('\033[34m--------------------------------------------\033[0m')
 
 if __name__=='__main__':
     """
@@ -203,8 +248,8 @@ if __name__=='__main__':
         fullnode_process.append(fp)
         Mined_Block_by_FullNode.append(list())
     
-    recv_thread = Thread(target=receive_block,args=(q,N,))
-    recv_thread.start()
+    gather_thread = Thread(target=gather_block,args=(q,N,))
+    gather_thread.start()
     while True:
         op = input()
         if op=='exit':
@@ -220,7 +265,7 @@ if __name__=='__main__':
             for fullnode in fullnode_process:
                 fullnode.join()
             print("fullnodes - terminate")
-            recv_thread.join()
+            gather_thread.join()
             print('recv_thread - terminate')
             break
             
@@ -241,55 +286,16 @@ if __name__=='__main__':
                 print('\033[95mNot a valid operation. Please input likes \'verify-transaciton <Fi>\'\033[0m')
                 continue
             Fi = int(op.split()[1][1])
-            if len(Mined_Block_by_FullNode[Fi]) > 0:
-                latest_block = Mined_Block_by_FullNode[Fi][-1]
-                transactions = Block.find_txs(latest_block.Merkle)
-                if len(transactions) > 0:
-                    Latest_tx = eval(transactions[-1])
-                    print('\033[34m--------------------------------------------')
-                    print('\033[32mtrID: \033[0m'+ Latest_tx['txid'])
-                    if Latest_tx['tradeCnt'] > 1:
-                        prev_tx = transactions_by_Vid[Latest_tx['Vid']][Latest_tx['tradeCnt']-1][0]
-                        print('\033[32mLast Transaction\'s output:      \033[0m',str(prev_tx['output']))
-                        print('\033[32mMost Recent Transaction\'s input:\033[0m',str(Latest_tx['input']))
-                        print('\033[32mLast transaction\'s\033[0m', transaction_fixed_attributes(prev_tx))
-                        print('\033[32mMost Recent Transaction\'s\033[0m', transaction_fixed_attributes(Latest_tx))
-                        print('\033[32mtrID\'s signature: \033[0m'+str(Latest_tx['sig']))
-                        print('\033[32mverifying using trID’s input: : \033[0m'+str(Latest_tx['input']))
-                        print('\033[32mVerify Result: \033[0m', validate_transaction(prev_tx,Latest_tx))
-                    else:
-                        print('\033[32mMost Recent Transaction is first trade in that Vid\033[0m')
-                        print('\033[32mMost Recent Transaction\'s\033[0m', transaction_fixed_attributes(Latest_tx))
-                        print('\033[32mverifying using trID’s input: : \033[0m'+ str(Latest_tx['input']))
-                        print('\033[32mVerify Result: \033[0m', validate_transaction(None,Latest_tx))
-                    print('\033[34m--------------------------------------------\033[0m')
-                else:
-                    print('\033[95m',Fi, '가 채굴 시도한 최신 block에 트랜잭션이 포함되지 않았습니다.\033[0m',sep='')
-            else:
-                print('\033[95m',Fi,'가 채굴 시도한 Block이 아직 없습니다.\033[0m',sep='')
+            verify_transaction(Fi)
         elif op.split()[0] == 'trace':
             if len(op.split()) !=3:
                 print('\033[95mNot a valid operation. Please input likes \'trace <Vid> ALL or <k>\'\033[95m')
                 continue
             Vid = op.split()[1]
-            if Vid not in transactions_by_Vid.keys():
-                print('\033[95m',Vid,' is not a valid Vid. There does not exist\033[0m',sep='')
-            elif op.split()[2]=='ALL':
-                for transaction,blockHeight in reversed(transactions_by_Vid[Vid]):
-                    print('\033[34m--------------------------------------------')
-                    print('\033[32min blockHeight \033[0m',blockHeight)
-                    for tx_attribute in transaction.keys():
-                        print('\t\033[33m', tx_attribute,': \033[0m', transaction[tx_attribute],sep='')
-                    print('\033[34m--------------------------------------------\033[0m')
-            else:
-                k = int(op.split()[2])
-
-                for transaction,blockHeight in reversed(transactions_by_Vid[Vid][-k:]):
-                    print('\033[34m--------------------------------------------')
-                    print('\033[32min blockHeight \033[0m',blockHeight)
-                    for tx_attribute in transaction.keys():
-                        print('\t\033[33m', tx_attribute,': \033[0m', transaction[tx_attribute],sep='')
-                    print('\033[34m--------------------------------------------\033[0m')
+            keyword = op.split()[2]
+            if keyword != 'ALL':
+                keyword = int(keyword)
+            trace_vid(Vid,keyword)
         else:
             print('\033[95mWrong Operation.\033[95m')
 
@@ -302,4 +308,4 @@ if __name__=='__main__':
             print('\033[95mto trace the Vehicle\'s tranding record: ')
             print('\033[0mPlease input likes \033[33mtrace <Vid> ALL or <k>\033[0m')
     
-    print('bye')            
+    print('bye')
